@@ -1,3 +1,4 @@
+from datetime import datetime
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch, exceptions
 import os
@@ -33,7 +34,8 @@ try:
                     "link": {"type": "text"},
                     "price": {"type": "text"},
                     "seller": {"type": "text"},
-                    "image": {"type": "text"}
+                    "image": {"type": "text"},
+                    "timestamp": {"type": "date"}
                 }
             }
         })
@@ -49,12 +51,12 @@ async def fetch_content(url, headers):
         args=['--no-sandbox', 
               '--disable-setuid-sandbox', 
               '--disable-dev-shm-usage', 
-              '--window-position=0,0',
+              '--window-position=-10000,-10000',
               '--window-size=1,1'
             ],
         ignoreHTTPSErrors=True
     )
-    print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
+    # print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
     page = await browser.newPage()
     await page.setUserAgent(headers['User-Agent'])
     await page.goto(url, {'waitUntil': 'networkidle2'})
@@ -67,14 +69,18 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
         return []
     items = []
     try:
+        # print(query)
         # 確認 Elasticsearch 有資料
         es_response = es.search(index=index_name, body={
             "query": {"match": {"query": query}},
+            "sort": [{"timestamp": {"order": "asc"}}],
             "size": size,
             "from": from_
         })
         hits = es_response['hits']['hits']
-        items.extend([hit["_source"] for hit in hits])
+        for hit in hits:
+            if hit["_source"]["query"] == query:
+                items.append(hit["_source"])
         if items:
             return items
     except Exception as e:
@@ -86,9 +92,9 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
 
-    print("current_page:", current_page)
-    print("max_pages:", max_pages)
-    print("search_url: ", search_url)
+    # print("current_page:", current_page)
+    # print("max_pages:", max_pages)
+    # print("search_url: ", search_url)
 
     while search_url and current_page < max_pages:
         try:
@@ -127,9 +133,10 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
                 "link": base_url + link,
                 "price": price,
                 "seller": seller,
-                "image": image_url
+                "image": image_url,
+                "timestamp": datetime.now()
             })
-        print(new_items[0])
+        # print(new_items[0])
         if len(new_items) > 0:
             items.extend(new_items[:size])
             next_page_tag = soup.select_one('a#pnnext')

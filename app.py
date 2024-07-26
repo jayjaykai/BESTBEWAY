@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,6 +26,7 @@ class ProdSearchResult(BaseModel):
     price: str
     seller: str
     image: str
+    timestamp: datetime
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):

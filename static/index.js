@@ -10,6 +10,7 @@ async function searchProducts() {
     currentPage = 0;
     document.getElementById('product-list').innerHTML = '';
     query = "嬰兒"+document.getElementById('search-query').value;
+    console.log(query);
     await loadProducts();
 }
 
