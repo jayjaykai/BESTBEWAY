@@ -24,6 +24,7 @@ class ProdSearchResult(BaseModel):
     link: str
     price: str
     seller: str
+    image: str
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):

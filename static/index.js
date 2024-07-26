@@ -9,7 +9,7 @@ async function searchProducts() {
     from = 0;
     currentPage = 0;
     document.getElementById('product-list').innerHTML = '';
-    query = document.getElementById('search-query').value;
+    query = "嬰兒"+document.getElementById('search-query').value;
     await loadProducts();
 }
 
@@ -20,6 +20,7 @@ async function loadProducts() {
         console.log("from", from)
         const response = await fetch(`http://127.0.0.1:8000/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
         const data = await response.json();
+        console.log(data);
         if (data.length === 0) {
             // allDataLoaded = true;
             loading = false;
@@ -32,7 +33,9 @@ async function loadProducts() {
             const div = document.createElement('div');
             div.className = 'product-list__item';
             div.innerHTML = `
-                <div class="product-list__image"></div>
+                <div class="product-list__image">
+                        <img src="${item.image}" alt="${item.title}">
+                </div>
                 <div class="product-list__info">
                     <div class="product-list__title">${item.title}</div>
                     <div class="product-list__price">${item.price}</div>
