@@ -12,7 +12,7 @@ try:
         ["http://localhost:9200/"],
         basic_auth=(os.getenv("ES_USER"), os.getenv("ES_PASSWORD"))
     )
-    # 尝试连接到 Elasticsearch，检查其是否可用
+    # 連線到 Elasticsearch server
     if not es.ping():
         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
 except exceptions.ConnectionError as e:
@@ -22,7 +22,7 @@ except Exception as e:
 
 index_name = "products"
 try:
-    # 删除索引
+    # 測試删除索引
     es.indices.delete(index=index_name, ignore=[400, 404])
     print("Testing and deleting data at first!")
     if not es.indices.exists(index=index_name):
@@ -69,20 +69,22 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
         return []
     items = []
     try:
-        # print(query)
+        print(query)
         # 確認 Elasticsearch 有資料
         es_response = es.search(index=index_name, body={
-            "query": {"match": {"query": query}},
+            "query": {"match_phrase": {"query": query}},
             "sort": [{"timestamp": {"order": "asc"}}],
             "size": size,
             "from": from_
         })
-        hits = es_response['hits']['hits']
-        for hit in hits:
-            if hit["_source"]["query"] == query:
-                items.append(hit["_source"])
-        if items:
-            return items
+        if len(es_response['hits']['hits']) != 0:
+            # print("Use EC!")
+            hits = es_response['hits']['hits']
+            for hit in hits:
+                if hit["_source"]["query"] == query:
+                    items.append(hit["_source"])
+            return items        
+
     except Exception as e:
         print(f"Error searching Elasticsearch: {e}")
 
