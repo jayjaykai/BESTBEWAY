@@ -9,7 +9,7 @@ async function searchProducts() {
     from = 0;
     currentPage = 0;
     document.getElementById('product-list').innerHTML = '';
-    query = "嬰兒"+document.getElementById('search-query').value;
+    query = document.getElementById('search-query').value;
     console.log(query);
     await loadProducts();
 }
@@ -19,7 +19,7 @@ async function loadProducts() {
     loading = true;
     try {
         console.log("from", from)
-        const response = await fetch(`http://127.0.0.1:8000/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
+        const response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
         const data = await response.json();
         console.log(data);
         if (data.length === 0) {

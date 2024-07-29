@@ -32,7 +32,7 @@ class ProdSearchResult(BaseModel):
 async def index(request: Request):
 	return FileResponse("./static/index.html", media_type="text/html")
 
-@app.get("/search", response_model=List[SearchResult])
+@app.get("/api/article", response_model=List[SearchResult])
 async def search(query: str, start: int = 1):
     api_key = os.getenv("GOOGLE_API_KEY")
     search_engine_id = os.getenv("SEARCH_ENGINE_ID_PTT")
@@ -57,7 +57,7 @@ async def search(query: str, start: int = 1):
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
     
-@app.get("/product", response_model=List[ProdSearchResult])
+@app.get("/api/product", response_model=List[ProdSearchResult])
 async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0):
     try:
         search_results = await search_products(query, from_=from_, size=size, current_page=current_page)

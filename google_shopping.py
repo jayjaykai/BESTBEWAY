@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch, exceptions
 import os
@@ -44,6 +45,32 @@ except exceptions.ConnectionError as e:
 except exceptions.RequestError as e:
     print(f"Error creating index: {e}")
 
+def splitString(str):
+    # Filter out Chinese words
+    ChiList = re.sub(u"([^\u4e00-\u9fa5])", " ", str).split(" ")
+    ChiList = removeDuplicates(ChiList)
+    ChiList = list(filter(None, ChiList))
+    newList = []
+    for item in ChiList:
+        if len(item) > 4:
+            newList = newList + splitEvery2Words(item)
+            newList = newList + split3Words(item)
+    newList = removeDuplicates(newList)
+    ChiList = ChiList + newList
+    ChiStr = ' '.join(ChiList)
+    
+    print(ChiStr)
+    return ChiStr
+
+def removeDuplicates(input_list):
+    return list(set(input_list))
+
+def splitEvery2Words(str):
+    return [str[i:i+2] for i in range(len(str)-1)]
+
+def split3Words(str):
+    return [str[i:i+3] for i in range(len(str)-2)]
+
 async def fetch_content(url, headers):
     browser = await launch(
         headless=True, 
@@ -72,7 +99,13 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
         print(query)
         # 確認 Elasticsearch 有資料
         es_response = es.search(index=index_name, body={
-            "query": {"match_phrase": {"query": query}},
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["title", "query"],
+                    "type": "phrase"
+                }
+            },
             "sort": [{"timestamp": {"order": "asc"}}],
             "size": size,
             "from": from_
@@ -81,10 +114,11 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
             # print("Use EC!")
             hits = es_response['hits']['hits']
             for hit in hits:
-                if hit["_source"]["query"] == query:
+                if query in hit["_source"]["title"]:  # 确保query在title中存在
                     items.append(hit["_source"])
-            return items        
-
+            if items:
+                return items         
+      
     except Exception as e:
         print(f"Error searching Elasticsearch: {e}")
 
@@ -138,6 +172,18 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
                 "image": image_url,
                 "timestamp": datetime.now()
             })
+            # 使用字串比對輸入訊息
+            # keywords = splitString(title)
+            # if any(kw in keywords for kw in query.split()):
+            #     new_items.append({
+            #         "query": query,
+            #         "title": title,
+            #         "link": base_url + link,
+            #         "price": price,
+            #         "seller": seller,
+            #         "image": image_url,
+            #         "timestamp": datetime.now()
+            # })
         # print(new_items[0])
         if len(new_items) > 0:
             items.extend(new_items[:size])
