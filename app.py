@@ -58,9 +58,9 @@ async def search(query: str, start: int = 1):
 #         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/api/product", response_model=List[ProdSearchResult])
-async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0):
+async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0, max_pages: int = 0):
     try:
-        search_results = await search_products(query, from_=from_, size=size, current_page=current_page)
+        search_results = await search_products(query, from_=from_, size=size, current_page=current_page, max_pages=max_pages)
         return search_results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

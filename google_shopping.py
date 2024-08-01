@@ -1,9 +1,11 @@
 from datetime import datetime
+import random
 import re
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch, exceptions
 import os
 from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
 from pyppeteer import launch
 
 load_dotenv()
@@ -24,8 +26,8 @@ except Exception as e:
 index_name = "products"
 try:
     # 測試删除索引
-    es.indices.delete(index=index_name, ignore=[400, 404])
-    print("Testing and deleting data at first!")
+    # es.indices.delete(index=index_name, ignore=[400, 404])
+    # print("Testing and deleting data at first!")
     if not es.indices.exists(index=index_name):
         es.indices.create(index=index_name, body={
             "mappings": {
@@ -144,6 +146,13 @@ async def fetch_content(url, headers):
     # print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
     page = await browser.newPage()
     await page.setUserAgent(headers['User-Agent'])
+    # 模擬人為操作
+    await page.evaluateOnNewDocument('''() => {
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => false,
+        });
+    }''')
+
     await page.goto(url, {'waitUntil': 'networkidle2'})
     content = await page.content()
     await browser.close()
@@ -169,7 +178,8 @@ async def search_es_products(query, from_=0, size=50):
 
         # 如果 from_ 大於總數量，直接返回空結果
         if from_ > total_hits:
-            return []      
+            items.append("NO_ES")
+            return items, total_hits 
         
         es_response = es.search(index=index_name, body={
             "query": {
@@ -191,19 +201,31 @@ async def search_es_products(query, from_=0, size=50):
 
     except Exception as e:
         print(f"Error searching Elasticsearch: {e}")
-    return items
+    return items, total_hits
 
 async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
+    print("Start fetch_google_products")
     items = []
     base_url = "https://www.google.com"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    headers_list = [
+        {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+        },
+        {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0'
+        }
+    ]
 
+    print("current_page:", current_page)
+    print("max_pages:", max_pages)
     if current_page>=max_pages:
         return []
 
     search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query}&start={current_page * size}&tbs=vw:g"
+    headers = random.choice(headers_list)
     print("search_url: ", search_url)
 
     try:
@@ -213,7 +235,7 @@ async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
         raise
 
     soup = BeautifulSoup(content, 'html.parser')
-
+    # print("After BeautifulSoup, soup: ", soup)
     new_items = []
     for item in soup.find_all('h3', class_='tAxDx'):
         title = item.get_text()
@@ -238,7 +260,7 @@ async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
 
         matching_rate = calculate_matching_rate(query, title)
         if matching_rate >0:
-            print("query: ",query)
+            # print("query: ",query)
             new_items.append({
                 "query": query,
                 "title": title,
@@ -246,7 +268,7 @@ async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
                 "price": price,
                 "seller": seller,
                 "image": image_url,
-                "timestamp": datetime.now()
+                "timestamp": datetime.now().isoformat()
             })
     
     if new_items:
@@ -264,14 +286,15 @@ async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
    
 async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
     print("from_ :", from_)
-    items = await search_es_products(query, from_, size)
-    print("items length: ", len(items))
-    if not items:  # 如果 Elasticsearch 沒有數據，則從 Google Shopping 爬取
-        # from_ = 0items.len
-        # current_page = 0
+    items, total_items_count = await search_es_products(query, from_, size)
+    print("ElasticSearch items length: ", total_items_count)
+    if "NO_ES" in items:  # 特殊字符串判断
+        print("Triggering fetch_google_products due to 'NO_ES' condition")
+        items = await fetch_google_products(query, size, current_page, max_pages)
+    elif total_items_count < from_:  # 如果 Elasticsearch 沒有數據，則從 Google Shopping 爬取
         items = await fetch_google_products(query, size, current_page, max_pages)
     
-    return items
+    return JSONResponse(content={"items": items, "total_items_count": total_items_count})
 
 
 

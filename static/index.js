@@ -28,7 +28,7 @@ async function loadProducts() {
         const response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
         const data = await response.json();
         console.log(data);
-        if (data.length === 0) {
+        if (data.items.length === 0) {
             allDataLoaded = true;
             loading = false;
             return;
@@ -42,7 +42,7 @@ async function loadProducts() {
         currentPage += 1;
         const productList = document.getElementById('product-list');
         let newItemsAdded = false;
-        data.forEach(item => {
+        data.items.forEach(item => {
             // 檢查產品是否已經加載過
             if (!loadedProducts.has(item.title)) {
                 loadedProducts.add(item.title); // 將產品標題加入集合
@@ -87,6 +87,26 @@ window.addEventListener('scroll', () => {
             }
         }
     }
+});
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryParam = urlParams.get('query');
+    if (queryParam) {
+        document.getElementById('search-query').value = queryParam;
+        searchProducts(queryParam);
+    }
+
+    // Add event listener to category links
+    const categoryLinks = document.querySelectorAll('.category');
+    categoryLinks.forEach(link => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            const query = link.getAttribute('data-query');
+            document.getElementById('search-query').value = query;
+            searchProducts(query);
+        });
+    });
 });
 
 
