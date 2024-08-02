@@ -1,1 +1,4 @@
 .env
+test_nltk.py
+test.py
+testESquery.py

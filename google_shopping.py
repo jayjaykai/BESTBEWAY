@@ -178,7 +178,7 @@ async def search_es_products(query, from_=0, size=50):
 
         # 如果 from_ 大於總數量，直接返回空結果
         if from_ > total_hits:
-            items.append("NO_ES")
+            # items.append("NO_ES")
             return items, total_hits 
         
         es_response = es.search(index=index_name, body={
@@ -203,96 +203,98 @@ async def search_es_products(query, from_=0, size=50):
         print(f"Error searching Elasticsearch: {e}")
     return items, total_hits
 
-async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
-    print("Start fetch_google_products")
-    items = []
-    base_url = "https://www.google.com"
-    headers_list = [
-        {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
-        },
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        },
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0'
-        }
-    ]
+## 先把可以讓user進一步再去搜尋的爬蟲抓資料拿掉
+# async def fetch_google_products(query, size=50, current_page=0, max_pages=5):
+#     print("Start fetch_google_products")
+#     items = []
+#     base_url = "https://www.google.com"
+#     headers_list = [
+#         {
+#             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+#         },
+#         {
+#             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+#         },
+#         {
+#             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0'
+#         }
+#     ]
 
-    print("current_page:", current_page)
-    print("max_pages:", max_pages)
-    if current_page>=max_pages:
-        return []
+#     print("current_page:", current_page)
+#     print("max_pages:", max_pages)
+#     if current_page>=max_pages:
+#         return []
 
-    search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query}&start={current_page * size}&tbs=vw:g"
-    headers = random.choice(headers_list)
-    print("search_url: ", search_url)
+#     search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query}&start={current_page * size}&tbs=vw:g"
+#     headers = random.choice(headers_list)
+#     print("search_url: ", search_url)
 
-    try:
-        content = await fetch_content(search_url, headers)
-    except Exception as e:
-        print(f"Error during HTTP request: {e}")
-        raise
+#     try:
+#         content = await fetch_content(search_url, headers)
+#     except Exception as e:
+#         print(f"Error during HTTP request: {e}")
+#         raise
 
-    soup = BeautifulSoup(content, 'html.parser')
-    # print("After BeautifulSoup, soup: ", soup)
-    new_items = []
-    for item in soup.find_all('h3', class_='tAxDx'):
-        title = item.get_text()
-        link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
+#     soup = BeautifulSoup(content, 'html.parser')
+#     # print("After BeautifulSoup, soup: ", soup)
+#     new_items = []
+#     for item in soup.find_all('h3', class_='tAxDx'):
+#         title = item.get_text()
+#         link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
 
-        price = 'N/A'
-        price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
-        if price_tag:
-            price = price_tag.get_text()
+#         price = 'N/A'
+#         price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
+#         if price_tag:
+#             price = price_tag.get_text()
 
-        seller = 'N/A'
-        seller_tag = item.find_next('div', class_='aULzUe IuHnof')
-        if seller_tag:
-            seller = seller_tag.get_text()
+#         seller = 'N/A'
+#         seller_tag = item.find_next('div', class_='aULzUe IuHnof')
+#         if seller_tag:
+#             seller = seller_tag.get_text()
 
-        image_url = 'N/A'
-        arOc1c_div = item.find_previous('div', class_='ArOc1c')
-        if arOc1c_div:
-            image_tag = arOc1c_div.find('img')
-            if image_tag and 'src' in image_tag.attrs:
-                image_url = image_tag['src']
+#         image_url = 'N/A'
+#         arOc1c_div = item.find_previous('div', class_='ArOc1c')
+#         if arOc1c_div:
+#             image_tag = arOc1c_div.find('img')
+#             if image_tag and 'src' in image_tag.attrs:
+#                 image_url = image_tag['src']
 
-        matching_rate = calculate_matching_rate(query, title)
-        if matching_rate >0:
-            # print("query: ",query)
-            new_items.append({
-                "query": query,
-                "title": title,
-                "link": base_url + link,
-                "price": price,
-                "seller": seller,
-                "image": image_url,
-                "timestamp": datetime.now().isoformat()
-            })
+#         matching_rate = calculate_matching_rate(query, title)
+#         if matching_rate >0:
+#             # print("query: ",query)
+#             new_items.append({
+#                 "query": query,
+#                 "title": title,
+#                 "link": base_url + link,
+#                 "price": price,
+#                 "seller": seller,
+#                 "image": image_url,
+#                 "timestamp": datetime.now().isoformat()
+#             })
     
-    if new_items:
-        items.extend(new_items[:size])
+#     if new_items:
+#         items.extend(new_items[:size])
 
-    # 將資料儲存到 Elasticsearch
-    print("items.len", len(items))
-    for item in items:
-        try:
-            es.index(index=index_name, id=item['title'], body=item)
-        except Exception as e:
-            print(f"Error indexing to Elasticsearch: {e}")
+#     # 將資料儲存到 Elasticsearch
+#     print("items.len", len(items))
+#     for item in items:
+#         try:
+#             es.index(index=index_name, id=item['title'], body=item)
+#         except Exception as e:
+#             print(f"Error indexing to Elasticsearch: {e}")
 
-    return items
+#     return items
    
 async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
     print("from_ :", from_)
     items, total_items_count = await search_es_products(query, from_, size)
     print("ElasticSearch items length: ", total_items_count)
-    if "NO_ES" in items:  # 特殊字符串判断
-        print("Triggering fetch_google_products due to 'NO_ES' condition")
-        items = await fetch_google_products(query, size, current_page, max_pages)
-    elif total_items_count < from_:  # 如果 Elasticsearch 沒有數據，則從 Google Shopping 爬取
-        items = await fetch_google_products(query, size, current_page, max_pages)
+    ## 先把可以讓user進一步再去搜尋的爬蟲抓資料拿掉
+    # if "NO_ES" in items:  # 特殊字符串判断
+    #     print("Triggering fetch_google_products due to 'NO_ES' condition")
+    #     items = await fetch_google_products(query, size, current_page, max_pages)
+    # elif total_items_count < from_:  # 如果 Elasticsearch 沒有數據，則從 Google Shopping 爬取
+    #     items = await fetch_google_products(query, size, current_page, max_pages)
     
     return JSONResponse(content={"items": items, "total_items_count": total_items_count})
 

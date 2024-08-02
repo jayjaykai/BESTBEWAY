@@ -7,19 +7,47 @@
     <link rel="stylesheet" href="/static/index_styles.css">
 </head>
 <body>
-    <div class="search-container">
-        <input type="text" class="search-container__input" id="search-query" placeholder="輸入查詢關鍵詞">
-        <button class="search-container__button" onclick="searchProducts()">查詢</button>
+    <div class="nav-container">
+        <nav class="nav">
+            <h2 class="nav__header">
+                <a href="/" class="nav__link">BESTBEWAY</a>
+            </h2>
+            <div class="nav__actions">
+                <button id="loginButton" class="nav__button">登入/註冊</button>
+                <div class="nav__profile">
+                    <img id="profileImage" class="nav__profile-image" alt="大頭貼">
+                    <div id="hoverText" class="nav__hover-text" style="display:none;">會員中心</div>
+                </div>
+            </div>
+        </nav>
     </div>
-    <div class="babyImage-Container">
+    <div class="nav-spacer"></div>
+    <div class="search-container">
+        <div class="search-container__slogan">
+            <p class="search-container__main-title">給您便利的育兒資訊</p>
+            <p class="search-container__subtitle">與寶寶一同成長，大人小孩都開心</p>
+        </div>
+        <div class="search-container__area">
+            <input type="text" class="search-container__input" id="search-query" placeholder="輸入查詢關鍵詞">
+            <button class="search-container__button" onclick="searchProducts()"></button>
+        </div>
+    </div>
+    <div class="tabs">
+        <div class="tabs__container">
+            <button id="productsButton" class="tabs__button" onclick="showTab('products')">推薦商品</button>
+            <button id="articlesButton" class="tabs__button" onclick="showTab('articles')">推薦文章</button>
+        </div>
+    </div>
+    <div class="babyImage-Container" id="products">
         <div class="row num1">
             <img src="/static/img/0-3.jpeg"/>
             <div class="row-details">
-                <a href="#" class="category" data-query="奶瓶消毒鍋">奶瓶消毒鍋</a>
+                <a href="#" class="category" data-query="消毒鍋">消毒鍋</a>
                 <a href="#" class="category" data-query="防脹氣奶瓶">防脹氣奶瓶</a>
+                <a href="#" class="category" data-query="溫奶器">溫奶器</a>
                 <a href="#" class="category" data-query="安撫奶嘴">安撫奶嘴</a>
-                <a href="#" class="category" data-query="嬰兒監視器">嬰兒監視器</a>
-                <a href="#" class="category" data-query="兒童安全座椅">兒童安全座椅</a>
+                <a href="#" class="category" data-query="監視器">監視器</a>
+                <a href="#" class="category" data-query="安全座椅">安全座椅</a>
                 <a href="#" class="category" data-query="嬰兒床">嬰兒床</a>
             </div>
         </div>
@@ -27,6 +55,7 @@
             <img src="/static/img/4-6.jpeg"/>
             <div class="row-details">
                 <a href="#" class="category" data-query="益生菌">益生菌</a>
+                <a href="#" class="category" data-query="寶乖亞">寶乖亞</a>
                 <a href="#" class="category" data-query="固齒器">固齒器</a>
                 <a href="#" class="category" data-query="吸鼻器">吸鼻器</a>
             </div>
@@ -34,22 +63,21 @@
         <div class="row num3">
             <img src="/static/img/7-9.jpeg"/>
             <div class="row-details">
-                <!-- <a href="#" class="category" data-query="消毒鍋">消毒鍋</a>
-                <a href="#" class="category" data-query="奶瓶">奶瓶</a>
-                <a href="#" class="category" data-query="推車">推車</a> -->
+
             </div>
         </div>
         <div class="row num4">
             <img src="/static/img/10-12.jpeg"/>
             <div class="row-details">
-                <!-- <a href="#" class="category" data-query="消毒鍋">消毒鍋</a>
-                <a href="#" class="category" data-query="奶瓶">奶瓶</a>
-                <a href="#" class="category" data-query="奶嘴">奶嘴</a> -->
+
             </div>
         </div>
+        <div class="product-list" id="product-list"></div>
     </div>
-
-    <div class="product-list" id="product-list"></div>
+    <div class="tabs__content" id="articles" style="display: none;">
+        <!-- 文章内容 -->
+        <p>這裡是一些推薦的文章內容...</p>
+    </div>
     <script src="/static/index.js" defer></script>
 </body>
 </html>

@@ -7,6 +7,25 @@ let allDataLoaded = false;
 let query = '';
 const loadedProducts = new Set(); // 用於存儲已加載的產品標題
 
+function showTab(tabId) {
+    let productsTab = document.getElementById('products');
+    let articlesTab = document.getElementById('articles');
+    let productsButton = document.getElementById('productsButton');
+    let articlesButton = document.getElementById('articlesButton');
+    
+    if (tabId === 'products') {
+        productsTab.style.display = 'flex';
+        articlesTab.style.display = 'none';
+        productsButton.classList.add('tabs__button--active');
+        articlesButton.classList.remove('tabs__button--active');
+    } else if (tabId === 'articles') {
+        productsTab.style.display = 'none';
+        articlesTab.style.display = 'flex';
+        articlesButton.classList.add('tabs__button--active');
+        productsButton.classList.remove('tabs__button--active');
+    }
+}
+
 async function searchProducts() {
     from = 0;
     currentPage = 0;

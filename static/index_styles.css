@@ -10,19 +10,162 @@ html{
     overflow: auto;
 }
 
+.nav-container {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background-color: #ffffff;
+    z-index: 1000;
+    padding: 10px 0;
+}
+
+.nav-spacer {
+    height: 60px;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 10px;
+}
+
+.nav__header {
+    color: #28f0f0;
+    font-size: 30px;
+}
+
+.nav__link {
+    color: inherit; 
+    text-decoration: none;
+}
+
+.nav__actions {
+    display: flex;
+    justify-content: space-between;
+    height: 34px;
+    gap: 0px;
+}
+
+.nav__button {
+    background-color: #FFFFFF;
+    border: none;
+    color: #666666;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 13.3px;
+    text-align: left;
+    padding: 10px;
+    cursor: pointer;
+}
+
+.nav__profile {
+    position: relative;
+    display: inline-block;
+}
+
+.nav__profile-image {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+}
+
+.nav__hover-text {
+    display: none;
+}
+
 .search-container {
     text-align: center;
     margin-bottom: 20px;
+    background-image: url('/static/img/baby_image.jpg'); 
+    background-size: cover ;
+    background-repeat: no-repeat;
+    background-position: center;
+    padding: 50px 20px; 
+} 
+
+.search-container__slogan, .search-container__area {
+    padding: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+.search-container__area {
+    flex-direction: row;
+}
+
+.search-container__main-title {
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    text-align: left;
+    color: #28f0f0;
+    font-weight: bold;
+}
+
+.search-container__subtitle {
+    font-size: 18px;
+    text-align: left;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
 }
 
 .search-container__input {
     padding: 10px;
     font-size: 16px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
 .search-container__button {
+    width: 60px;
+    height: 40px;
     padding: 10px 20px;
     font-size: 16px;
+    border: none;
+    background-color: #008080;
+    background-image: url('/static/img/search.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 30px 30px;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+}
+
+.tabs__container {
+    display: flex;
+    justify-content: space-between;
+    width: 50%;
+}
+
+.tabs__button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #ffffff;
+    color: #008080;
+    border: 2px solid #008080;
+    border-radius: 5px;
+}
+
+.tabs__button--active {
+    background-color: #008080;
+    color: #ffffff;
 }
 
 .babyImage-Container {
