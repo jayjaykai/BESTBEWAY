@@ -1,97 +1,104 @@
-# from fastapi import FastAPI, HTTPException
-# import jieba
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.metrics.pairwise import cosine_similarity
-
-# app = FastAPI()
-
-# # 示例產品數據
-# products = [
-#     {"name": "益生菌", "description": "這是一種可以幫助腸絞痛的益生菌"},
-#     {"name": "防脹氣奶瓶", "description": "這是一種適合有腸絞痛寶寶使用的防脹氣奶瓶"},
-#     {"name": "嬰兒肚痛藥", "description": "這是一種可以緩解嬰兒肚痛的藥物"},
-#     {"name": "舒緩滴劑", "description": "這是一種可以幫助嬰兒舒緩腸絞痛的滴劑"},
-#     {"name": "抗過敏奶粉", "description": "這是一種適合對奶蛋白過敏寶寶的抗過敏奶粉"},
-#     {"name": "安撫奶嘴", "description": "這是一種可以幫助寶寶舒緩情緒的安撫奶嘴"},
-#     {"name": "防吐奶枕", "description": "這是一種可以幫助寶寶防止吐奶的枕頭"},
-#     {"name": "便秘寶寶益生菌", "description": "這是一種專門針對便秘寶寶的益生菌"},
-#     {"name": "新生兒舒緩膏", "description": "這是一種可以幫助新生兒舒緩腸絞痛的膏狀產品"},
-#     {"name": "防脹氣奶嘴", "description": "這是一種適合有腸絞痛寶寶使用的防脹氣奶嘴"}
-# ]
-
-# # 將產品描述進行分詞
-# for product in products:
-#     product["tokenized_description"] = " ".join(jieba.cut(product["description"]))
-
-# # 使用TF-IDF向量化
-# vectorizer = TfidfVectorizer()
-# all_descriptions = [product["tokenized_description"] for product in products]
-# tfidf_matrix = vectorizer.fit_transform(all_descriptions)
-
-# @app.get("/match_products/")
-# def match_products(description: str):
-#     try:
-#         # 將新描述進行分詞
-#         tokenized_description = " ".join(jieba.cut(description))
-        
-#         # 將新描述向量化並計算相似度
-#         new_tfidf_vector = vectorizer.transform([tokenized_description])
-#         similarity_matrix = cosine_similarity(new_tfidf_vector, tfidf_matrix)
-        
-#         # 找到所有相似的產品
-#         similar_products = []
-#         for idx, similarity in enumerate(similarity_matrix[0]):
-#             if similarity > 0:  # 這裡可以調整閾值
-#                 similar_products.append(products[idx])
-        
-#         return {"similar_products": similar_products}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-
+from datetime import datetime
 import re
+from bs4 import BeautifulSoup
+from elasticsearch import Elasticsearch, exceptions
+import os
+from dotenv import load_dotenv
+import random
+import time
+import asyncio
+from fake_useragent import UserAgent
+import undetected_chromedriver as uc
 
-# 定義你的分類關鍵詞
-categories = {
-    "食品": ["奶粉", "米粉", "果泥", "蔬菜泥", "餅乾", "米餅", "果汁"],
-    "護理用品": ["尿布", "濕紙巾", "洗髮水", "沐浴露", "潤膚乳", "爽身粉", "護臀膏", "指甲剪", "梳子", "刷子"],
-    "喂養用品": ["奶瓶", "奶嘴", "吸奶器", "清潔刷", "消毒器", "保溫袋", "餐具", "圍兜"],
-    "玩具": ["搖鈴", "咬牙器", "床玩具", "活動架", "益智玩具", "毛絨玩具", "音樂玩具"],
-    "家居用品": ["床", "床墊", "護欄", "睡袋", "毯", "車", "安全座椅", "高腳椅", "搖椅", "揹帶"],
-    "服裝": ["連身衣", "上衣", "褲子", "襪子", "帽子", "手套", "圍巾"],
-    "健康用品": ["體溫計", "藥盒", "吸鼻器", "護耳套", "口腔清潔用品"],
-    "出行用品": ["車", "揹帶", "包包", "防蚊罩", "防曬霜", "水壺"],
-    "安全用品": ["安全門", "防撞條", "插座保護蓋", "安全鎖"]
-}
+load_dotenv()
 
-# 分類函數
-def classify_product(product_name):
-    for category, keywords in categories.items():
-        for keyword in keywords:
-            if re.search(keyword, product_name, re.IGNORECASE):
-                return category
-    return "未分類"
+# 初始化 Elasticsearch 客户端
+try:
+    es = Elasticsearch(
+        ["http://localhost:9200/"],
+        basic_auth=(os.getenv("ES_USER"), os.getenv("ES_PASSWORD"))
+    )
+    if not es.ping():
+        raise exceptions.ConnectionError("Elasticsearch server is not reachable")
+except exceptions.ConnectionError as e:
+    print(f"Error connecting to Elasticsearch: {e}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
 
-# 測試數據
-product_names = [
-    "嬰兒奶粉1段",
-    "嬰兒濕紙巾",
-    "防脹氣奶瓶",
-    "搖鈴玩具",
-    "嬰兒床墊",
-    "嬰兒連身衣",
-    "嬰兒體溫計",
-    "嬰兒車",
-    "插座保護蓋",
-    "寶乖亞"
-]
+index_name = "products"
 
-# 分類產品
-classified_products = {name: classify_product(name) for name in product_names}
+ua = UserAgent()
 
-# 打印結果
-for product, category in classified_products.items():
-    print(f"產品名稱: {product}, 分類: {category}")
+def fetch_content(url, driver):
+    try:
+        user_agent = ua.random
+        driver.execute_cdp_cmd('Network.setUserAgentOverride', {"userAgent": user_agent})
+        driver.get(url)
+        time.sleep(random.uniform(5, 10))  # 增加随机延迟
+        content = driver.page_source
+        return content
+    except Exception as e:
+        print(f"Error during HTTP request: {e}")
+        return None
+
+def search_products(query):
+    items = []
+    retries = 3
+    for _ in range(retries):
+        driver = uc.Chrome()
+        search_url = f"https://www.google.com/search?tbm=shop&hl=zh-TW&q={query}"
+        content = fetch_content(search_url, driver)
+        driver.quit()
+        if content:
+            break
+        time.sleep(random.uniform(10, 20))  # 在重试前增加随机延迟
+
+    if content is None:
+        return items
+
+    soup = BeautifulSoup(content, 'html.parser')
+    for item in soup.find_all('h3', class_='tAxDx'):
+        title = item.get_text()
+        link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
+        price = 'N/A'
+        price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
+        if price_tag:
+            price = price_tag.get_text()
+        seller = 'N/A'
+        seller_tag = item.find_next('div', class_='aULzUe IuHnof')
+        if seller_tag:
+            seller = seller_tag.get_text()
+        image_url = 'N/A'
+        arOc1c_div = item.find_previous('div', class_='ArOc1c')
+        if arOc1c_div:
+            image_tag = arOc1c_div.find('img')
+            if image_tag and 'src' in image_tag.attrs:
+                image_url = image_tag['src']
+        items.append({
+            "query": query,
+            "title": title,
+            "link": "https://www.google.com" + link,
+            "price": price,
+            "seller": seller,
+            "image": image_url,
+            "timestamp": datetime.now()
+        })
+    return items
+
+def main():
+    queries = ["嬰兒監視器", "溫奶器"]
+    start_time = datetime.now()
+    print(f"開始執行時間: {start_time}")
+
+    for query in queries:
+        results = search_products(query)
+        print(f"Query '{query}' count: ", len(results))
+        for item in results:
+            print(item)
+
+    end_time = datetime.now()
+    print(f"結束時間: {end_time}")
+    print(f"總執行時間: {end_time - start_time}")
+
+if __name__ == "__main__":
+    main()

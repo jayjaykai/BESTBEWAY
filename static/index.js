@@ -7,6 +7,11 @@ let allDataLoaded = false;
 let query = '';
 const loadedProducts = new Set(); // 用於存儲已加載的產品標題
 
+async function performSearch() {
+    searchProducts();
+    searchArticles();
+}
+
 function showTab(tabId) {
     let productsTab = document.getElementById('products');
     let articlesTab = document.getElementById('articles');
@@ -92,6 +97,53 @@ async function loadProducts() {
     }
 }
 
+async function searchArticles() {
+    const query = document.getElementById("search-query").value;
+    const url = `/api/article?query=${encodeURIComponent(query)}`;
+
+    const articleList = document.getElementById("article-list");
+    articleList.innerHTML = "<p>Loading...</p>";
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        console.error("Search API request failed");
+        articleList.innerHTML = "<p>Error loading articles.</p>";
+        return;
+    }
+
+    const articles = await response.json();
+    displayArticles(articles);
+}
+
+function displayArticles(articles) {
+    const articleList = document.getElementById("article-list");
+    articleList.innerHTML = "";
+
+    articles.forEach(article => {
+        const articleItem = document.createElement("div");
+        articleItem.className = "article-list__item";
+
+        const title = document.createElement("h3");
+        title.className = "article-list__item-title";
+        title.textContent = article.title;
+        articleItem.appendChild(title);
+
+        const link = document.createElement("a");
+        link.className = "article-list__item-link";
+        link.href = article.link;
+        link.target = "_blank";
+        link.textContent = article.link;
+        articleItem.appendChild(link);
+
+        const snippet = document.createElement("p");
+        snippet.className = "article-list__item-snippet";
+        snippet.textContent = article.snippet;
+        articleItem.appendChild(snippet);
+
+        articleList.appendChild(articleItem);
+    });
+}
+
 window.addEventListener('scroll', () => {
     query = document.getElementById('search-query').value;
     if (query){
@@ -124,10 +176,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
             const query = link.getAttribute('data-query');
             document.getElementById('search-query').value = query;
             searchProducts(query);
+            searchArticles(query);
         });
     });
 });
 
+showTab('products');
 
 // let from = 0;
 // const pageSize = 60;

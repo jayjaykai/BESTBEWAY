@@ -4,11 +4,16 @@ from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch, exceptions
 import os
 from dotenv import load_dotenv
-from pyppeteer import launch
 import random
 import time
 import concurrent.futures
-import asyncio
+from fake_useragent import UserAgent
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 load_dotenv()
 
@@ -110,54 +115,36 @@ def calculate_matching_rate(query, title):
     matching_rate = matching_count / len(query_set) if len(query_set) > 0 else 0
     return matching_rate
 
-async def fetch_content(url, headers):
+def fetch_content(url, headers):
     try:
-        browser = await launch(
-            headless=True, 
-            executablePath=os.getenv("PYPPETEER_EXECUTABLE_PATH"),
-            args=[
-                '--no-sandbox', 
-                '--disable-setuid-sandbox', 
-                '--disable-dev-shm-usage', 
-                '--window-position=-10000,-10000',
-                '--window-size=1,1'
-                #  f'--proxy-server={proxy}'
-            ],
-            ignoreHTTPSErrors=True
-        )
-        page = await browser.newPage()
-        await page.setUserAgent(headers['User-Agent'])
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
+        chrome_options.add_argument(f"referer={headers['Referer']}")
+        # 設定 Chrome Driver 的執行黨路徑
+        chrome_options.chrome_executable_path="D:\python training\chromedriver.exe"
+        # 建立 Driver 物件實體，用程式操作瀏覽器運作
+        driver = webdriver.Chrome(options=chrome_options)
         
-        # 模擬人為操作
-        await page.evaluateOnNewDocument('''() => {
-            Object.defineProperty(navigator, 'webdriver', {
-              get: () => undefined
-            });
-        }''')
-        
-        await page.goto(url, {'waitUntil': 'networkidle2'})
-        await asyncio.sleep(random.randint(1, 5))
-        content = await page.content()
-        await browser.close()
+        driver.get(url)      
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
+
+        time.sleep(random.uniform(10, 20))
+        content = driver.page_source
+        driver.quit()
         return content
     except Exception as e:
         print(f"Error during HTTP request: {e}")
         return None
 
-async def search_products(query, current_page=1, size=60, max_page=15):
+def search_products(query, current_page=1, size=60, max_page=15):
     items = []
     base_url = "https://www.google.com"
-    headers_list = [
-        {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
-        },
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
-        },
-        {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0'
-        }
-    ]
+    ua = UserAgent()
+    user_agent = ua.random
     try:
         # 執行爬蟲前，先將原先在Elastic database 的資料移除
         es.delete_by_query(index=index_name, body={
@@ -171,21 +158,22 @@ async def search_products(query, current_page=1, size=60, max_page=15):
         for page in range(current_page, max_page + 1):
             print(page)
             search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query}&start={(page - 1) * size}&tbs=vw:g"
-            headers = random.choice(headers_list)
-            # proxy = random.choice(proxies)
+            headers = {
+                'User-Agent': user_agent,
+                'Referer': base_url
+            }
             print(search_url)
 
-            content = await fetch_content(search_url, headers)
+            content = fetch_content(search_url, headers)
             if content is None:
                 continue
 
             soup = BeautifulSoup(content, 'html.parser')
-            # print("After BeautifulSoup, soup: ", soup)
+            time.sleep(random.uniform(1, 10))
             new_items = []
             for item in soup.find_all('h3', class_='tAxDx'):
                 title = item.get_text()
                 link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
-                # print("title:", title)
                 price = 'N/A'
                 price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
                 if price_tag:
@@ -201,7 +189,7 @@ async def search_products(query, current_page=1, size=60, max_page=15):
                     if image_tag and 'src' in image_tag.attrs:
                         image_url = image_tag['src']
                 matching_rate = calculate_matching_rate(query, title)
-                if matching_rate >= 0.2:
+                if matching_rate >0:
                     new_items.append({
                         "query": query,
                         "title": title,
@@ -215,51 +203,38 @@ async def search_products(query, current_page=1, size=60, max_page=15):
                 items.extend(new_items[:size])
             else:
                 break
-            time.sleep(random.uniform(10, 15))
+
+            for item in items:
+                try:
+                    es.index(index=index_name, id=item['title'], body=item)
+                except Exception as e:
+                    print(f"Error indexing to Elasticsearch: {e}")
+
     except Exception as e:
         print(f"Error during HTTP request: {e}")
         return None
     
-    for item in items:
-        try:
-            es.index(index=index_name, id=item['title'], body=item)
-        except Exception as e:
-            print(f"Error indexing to Elasticsearch: {e}")
+    # for item in items:
+    #     try:
+    #         es.index(index=index_name, id=item['title'], body=item)
+    #     except Exception as e:
+    #         print(f"Error indexing to Elasticsearch: {e}")
 
     return items
 
 # 單程序
 # queries = ["溫奶器", "安撫奶嘴", "嬰兒監視器", "兒童安全座椅", "嬰兒床", "嬰兒益生菌", "寶乖亞", "固齒器", "吸鼻器", "奶瓶消毒鍋", "防脹氣奶瓶"]
-queries = ["固齒器", "吸鼻器"]
-async def main():
+queries = ["嬰兒監視器"]
+def main():
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
     for query in queries:
-        results = await search_products(query)
+        results = search_products(query)
         print(f"Query '{query}' count: ", len(results))
 
     end_time = datetime.now()
     print(f"結束時間: {end_time}")
     print(f"總執行時間: {end_time - start_time}")
 
-asyncio.run(main())
-
-# # 多執行續(有bug)
-# async def handle_queries(queries):
-#     loop = asyncio.get_event_loop()
-#     with concurrent.futures.ThreadPoolExecutor() as pool:
-#         futures = [loop.run_in_executor(pool, asyncio.run, search_products(query)) for query in queries]
-#         results = await asyncio.gather(*futures)
-#         return results
-
-# async def main():
-#     queries0_3 = ["嬰兒益生菌", "嬰兒腸絞痛", "嬰兒推車", "奶瓶消毒鍋", "防脹氣奶瓶"]
-#     queries4_6 = ["固齒器", "兒童安全座椅", "嬰兒床", "吸鼻器", "安撫奶嘴", "嬰兒監視器"]
-
-#     results_0_3 = await handle_queries(queries0_3)
-#     results_4_6 = await handle_queries(queries4_6)
-
-#     print("Results for queries0_3: ", results_0_3)
-#     print("Results for queries4_6: ", results_4_6)
-
-# asyncio.run(main())
+if __name__ == "__main__":
+    main()

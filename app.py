@@ -73,12 +73,12 @@ async def search_product(query: str, from_: int = 0, size: int = 50, current_pag
 #             return content_div.get_text()
 #     return None
 
-@app.get("/api/full_articles", response_model=List[ArticleContent])
-async def get_full_articles(query: str, start: int = 1):
-    search_results = await search(query, start)
-    full_articles = []
-    for result in search_results:
-        content = fetch_article_content(result.link)
-        if content:
-            full_articles.append(ArticleContent(title=result.title, link=result.link, content=content))
-    return full_articles    
+# @app.get("/api/full_articles", response_model=List[ArticleContent])
+# async def get_full_articles(query: str, start: int = 1):
+#     search_results = await search(query, start)
+#     full_articles = []
+#     for result in search_results:
+#         content = fetch_article_content(result.link)
+#         if content:
+#             full_articles.append(ArticleContent(title=result.title, link=result.link, content=content))
+#     return full_articles    

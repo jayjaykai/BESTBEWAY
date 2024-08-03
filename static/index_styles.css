@@ -149,18 +149,23 @@ html{
 
 .tabs__container {
     display: flex;
-    justify-content: space-between;
-    width: 50%;
+    justify-content: center;
+    max-width: 1200px;
+    width: 100%;
+    gap: 20px;
+    padding: 0 20px
 }
 
 .tabs__button {
     padding: 10px 20px;
-    font-size: 16px;
+    font-size: 24px;
+    width: 100%;
     cursor: pointer;
+    color:#008080;
     background-color: #ffffff;
-    color: #008080;
     border: 2px solid #008080;
     border-radius: 5px;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .tabs__button--active {
@@ -294,3 +299,48 @@ html{
     text-decoration: underline;
 }
 
+.tabs__content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.article-list {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.article-list__item {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.article-list__item h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: #333;
+}
+
+.article-list__item a {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #1a0dab;
+    text-decoration: none;
+}
+
+.article-list__item a:hover {
+    text-decoration: underline;
+}
+
+.article-list__item p {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}

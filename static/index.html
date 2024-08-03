@@ -29,7 +29,7 @@
         </div>
         <div class="search-container__area">
             <input type="text" class="search-container__input" id="search-query" placeholder="輸入查詢關鍵詞">
-            <button class="search-container__button" onclick="searchProducts()"></button>
+            <button class="search-container__button" onclick="performSearch()"></button>
         </div>
     </div>
     <div class="tabs">
@@ -76,8 +76,8 @@
     </div>
     <div class="tabs__content" id="articles" style="display: none;">
         <!-- 文章内容 -->
-        <p>這裡是一些推薦的文章內容...</p>
-    </div>
+        <div class="article-list" id="article-list"></div>
+    </div> 
     <script src="/static/index.js" defer></script>
 </body>
 </html>
