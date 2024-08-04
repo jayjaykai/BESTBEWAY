@@ -14,6 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import gc
 
 load_dotenv()
 
@@ -101,7 +102,7 @@ def split_basic_words(str):
     newList = []
     for item in ChiList:
         if len(item) > 3:
-            newList = newList + Generator.split3Words(item)
+            newList = newList + Generator.split2Words(item)
     newList = Generator.removeDuplicates(newList)
     ChiList = ChiList + newList
     return ChiList
@@ -130,17 +131,19 @@ def fetch_content(url, headers):
         driver = webdriver.Chrome(options=chrome_options)
         
         driver.get(url)      
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
 
-        time.sleep(random.uniform(10, 20))
+        time.sleep(random.uniform(5, 10))
         content = driver.page_source
         driver.quit()
         return content
     except Exception as e:
         print(f"Error during HTTP request: {e}")
         return None
+    finally:
+        gc.collect()
 
-def search_products(query, current_page=1, size=60, max_page=15):
+def search_products(query, current_page=1, size=60, max_page=10):
     items = []
     base_url = "https://www.google.com"
     ua = UserAgent()
@@ -214,21 +217,19 @@ def search_products(query, current_page=1, size=60, max_page=15):
         print(f"Error during HTTP request: {e}")
         return None
     
-    # for item in items:
-    #     try:
-    #         es.index(index=index_name, id=item['title'], body=item)
-    #     except Exception as e:
-    #         print(f"Error indexing to Elasticsearch: {e}")
-
     return items
 
 # 單程序
+queries0_3 = ["嬰兒奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "嬰兒監視器", "兒童安全座椅", "嬰兒床"]
+# queries4_6 = ["防脹氣奶瓶", "嬰兒益生菌", "寶乖亞", "固齒器", "吸鼻器", "嬰兒衣服", "嬰兒背帶"]
+# queries7_9 = ["副食品", "嬰兒餐椅", "嬰兒玩具", "兒童安全護欄", "嬰兒口水巾"]
+# queries10_12 = ["嬰兒鞋", "兒童積木", "兒童馬桶"]
 # queries = ["溫奶器", "安撫奶嘴", "嬰兒監視器", "兒童安全座椅", "嬰兒床", "嬰兒益生菌", "寶乖亞", "固齒器", "吸鼻器", "奶瓶消毒鍋", "防脹氣奶瓶"]
-queries = ["嬰兒監視器"]
+# queries = ["嬰幼兒衣服"]
 def main():
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
-    for query in queries:
+    for query in queries0_3:
         results = search_products(query)
         print(f"Query '{query}' count: ", len(results))
 
