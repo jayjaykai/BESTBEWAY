@@ -300,6 +300,7 @@ html{
 }
 
 .tabs__content {
+    flex-direction: column;
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
@@ -344,3 +345,18 @@ html{
     font-size: 14px;
     color: #666;
 }
+
+.recommended-items__item {
+    margin-right: 10px;
+}
+
+.recommended-items__item a {
+    text-decoration: none;
+    color: #007bff; 
+    cursor: pointer;
+}
+
+.recommended-items__item a:hover {
+    text-decoration: underline; 
+}
+

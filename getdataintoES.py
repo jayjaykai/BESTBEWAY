@@ -158,9 +158,10 @@ def search_products(query, current_page=1, size=60, max_page=10):
             }
         })
 
+        query_with_baby = f"{query} 嬰兒"
         for page in range(current_page, max_page + 1):
             print(page)
-            search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query}&start={(page - 1) * size}&tbs=vw:g"
+            search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
             headers = {
                 'User-Agent': user_agent,
                 'Referer': base_url
@@ -172,7 +173,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
                 continue
 
             soup = BeautifulSoup(content, 'html.parser')
-            time.sleep(random.uniform(1, 10))
+            time.sleep(random.uniform(5, 10))
             new_items = []
             for item in soup.find_all('h3', class_='tAxDx'):
                 title = item.get_text()
@@ -220,18 +221,32 @@ def search_products(query, current_page=1, size=60, max_page=10):
     return items
 
 # 單程序
-queries0_3 = ["嬰兒奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "嬰兒監視器", "兒童安全座椅", "嬰兒床"]
-# queries4_6 = ["防脹氣奶瓶", "嬰兒益生菌", "寶乖亞", "固齒器", "吸鼻器", "嬰兒衣服", "嬰兒背帶"]
-# queries7_9 = ["副食品", "嬰兒餐椅", "嬰兒玩具", "兒童安全護欄", "嬰兒口水巾"]
-# queries10_12 = ["嬰兒鞋", "兒童積木", "兒童馬桶"]
-# queries = ["溫奶器", "安撫奶嘴", "嬰兒監視器", "兒童安全座椅", "嬰兒床", "嬰兒益生菌", "寶乖亞", "固齒器", "吸鼻器", "奶瓶消毒鍋", "防脹氣奶瓶"]
-# queries = ["嬰幼兒衣服"]
+# queries0_3 = ["奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "監視器", "汽車安全座椅", "床", "屁屁膏"]
+# queries4_6 = ["防脹氣奶瓶", "益生菌", "寶乖亞", "固齒器", "吸鼻器", "衣服", "背帶"]
+# queries7_9 = ["副食品", "餐椅", "玩具", "安全護欄", "口水巾"]
+# queries10_12 = ["學步鞋子", "益智積木", "馬桶"]
+# queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液"]
+# queries = ["溫奶器", "安撫奶嘴", "監視器", "安全座椅", "床", "益生菌", "寶乖亞", "固齒器", "吸鼻器", "奶瓶消毒鍋", "防脹氣奶瓶"]
+queries = ["屁屁膏"]
 def main():
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
-    for query in queries0_3:
-        results = search_products(query)
+    
+    for query in queries:
+        attempts = 0
+        max_attempts = 5
+        results = []
+
+        while attempts < max_attempts:
+            results = search_products(query)
+            if len(results) > 0:
+                break
+            attempts += 1
+            print(f"Query '{query}' attempt {attempts} failed, retrying...")
+            time.sleep(random.uniform(10, 20))  # 重試前等待一段時間
+
         print(f"Query '{query}' count: ", len(results))
+        time.sleep(random.uniform(5, 10))
 
     end_time = datetime.now()
     print(f"結束時間: {end_time}")

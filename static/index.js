@@ -49,8 +49,8 @@ async function loadProducts() {
     loading = true;
     try {
         console.log("from", from)
-        const response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
-        const data = await response.json();
+        let response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
+        let data = await response.json();
         console.log(data);
         if (data.items.length === 0) {
             allDataLoaded = true;
@@ -64,13 +64,13 @@ async function loadProducts() {
         // }
         from += pageSize;
         currentPage += 1;
-        const productList = document.getElementById('product-list');
+        let productList = document.getElementById('product-list');
         let newItemsAdded = false;
         data.items.forEach(item => {
             // 檢查產品是否已經加載過
             if (!loadedProducts.has(item.title)) {
                 loadedProducts.add(item.title); // 將產品標題加入集合
-                const div = document.createElement('div');
+                let div = document.createElement('div');
                 div.className = 'product-list__item';
                 div.innerHTML = `
                     <div class="product-list__image">
@@ -98,12 +98,12 @@ async function loadProducts() {
 }
 
 async function searchArticles() {
-    const query = document.getElementById("search-query").value;
-    const url = `/api/article?query=${encodeURIComponent(query)}`;
+    let query = document.getElementById("search-query").value;
+    let url = `/api/article?query=${encodeURIComponent(query)}`;
 
-    const articleList = document.getElementById("article-list");
+    let articleList = document.getElementById("article-list");
     articleList.innerHTML = "<p>Loading...</p>";
-    const response = await fetch(url);
+    let response = await fetch(url);
 
     if (!response.ok) {
         console.error("Search API request failed");
@@ -111,36 +111,81 @@ async function searchArticles() {
         return;
     }
 
-    const articles = await response.json();
-    displayArticles(articles);
+    let { search_results, recommended_items } = await response.json();
+    displayArticles(search_results);
+    displayRecommendedItems(recommended_items);
 }
 
 function displayArticles(articles) {
-    const articleList = document.getElementById("article-list");
+    let articleList = document.getElementById("article-list");
     articleList.innerHTML = "";
 
     articles.forEach(article => {
-        const articleItem = document.createElement("div");
+        let articleItem = document.createElement("div");
         articleItem.className = "article-list__item";
 
-        const title = document.createElement("h3");
+        let title = document.createElement("h3");
         title.className = "article-list__item-title";
         title.textContent = article.title;
         articleItem.appendChild(title);
 
-        const link = document.createElement("a");
+        let link = document.createElement("a");
         link.className = "article-list__item-link";
         link.href = article.link;
         link.target = "_blank";
         link.textContent = article.link;
         articleItem.appendChild(link);
 
-        const snippet = document.createElement("p");
+        let snippet = document.createElement("p");
         snippet.className = "article-list__item-snippet";
         snippet.textContent = article.snippet;
         articleItem.appendChild(snippet);
 
         articleList.appendChild(articleItem);
+    });
+}
+
+// function displayRecommendedItems(recommendedItems) {
+//     let recommendedList = document.getElementById("article-product");
+//     recommendedList.innerHTML = "推薦商品： ";
+
+//     if (recommendedItems.length === 0) {
+//         recommendedList.innerHTML += "<p>No recommended items found.</p>";
+//         return;
+//     }
+
+//     recommendedItems.forEach(item => {
+//         let itemElement = document.createElement("span");
+//         itemElement.className = "recommended-items__item";
+//         itemElement.textContent = item;
+//         recommendedList.appendChild(itemElement);
+//     });
+// }
+function displayRecommendedItems(recommendedItems) {
+    let recommendedList = document.getElementById("article-product");
+    recommendedList.innerHTML = "推薦商品： ";
+
+    if (recommendedItems.length === 0) {
+        recommendedList.innerHTML += "<p>No recommended items found.</p>";
+        return;
+    }
+
+    recommendedItems.forEach(item => {
+        let itemElement = document.createElement("span");
+        itemElement.className = "recommended-items__item";
+        
+        // Create a link element
+        let itemLink = document.createElement("a");
+        itemLink.textContent = item;
+        itemLink.onclick = function () {
+            document.getElementById("search-query").value = item;
+            searchProducts();
+            showTab('products');
+        };
+        
+        itemElement.appendChild(itemLink);
+        itemElement.style.marginRight = "10px"; // Add margin for spacing
+        recommendedList.appendChild(itemElement);
     });
 }
 
@@ -161,19 +206,19 @@ window.addEventListener('scroll', () => {
 });
 
 document.addEventListener('DOMContentLoaded', (event) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const queryParam = urlParams.get('query');
+    let urlParams = new URLSearchParams(window.location.search);
+    let queryParam = urlParams.get('query');
     if (queryParam) {
         document.getElementById('search-query').value = queryParam;
         searchProducts(queryParam);
     }
 
     // Add event listener to category links
-    const categoryLinks = document.querySelectorAll('.category');
+    let categoryLinks = document.querySelectorAll('.category');
     categoryLinks.forEach(link => {
         link.addEventListener('click', (event) => {
             event.preventDefault();
-            const query = link.getAttribute('data-query');
+            let query = link.getAttribute('data-query');
             document.getElementById('search-query').value = query;
             searchProducts(query);
             searchArticles(query);

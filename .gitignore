@@ -2,4 +2,5 @@
 test_nltk.py
 test.py
 testESquery.py
-test_sl.py
+test_pyppeteer.py
+nltk_api.py

@@ -10,15 +10,11 @@ from dotenv import load_dotenv
 import asyncio
 from elasticsearch import Elasticsearch
 from google_shopping import search_products
+from google_search_api import search_articles, SearchResult, SearchResponse
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 load_dotenv()
-
-class SearchResult(BaseModel):
-    title: str
-    link: str
-    snippet: str
 
 class ProdSearchResult(BaseModel):
     title: str
@@ -28,31 +24,46 @@ class ProdSearchResult(BaseModel):
     image: str
     timestamp: datetime
 
-class ArticleContent(BaseModel):
-    title: str
-    link: str
-    content: str    
+# class ArticleContent(BaseModel):
+#     title: str
+#     link: str
+#     content: str    
 
 @app.get("/", include_in_schema=False)
 async def index(request: Request):
 	return FileResponse("./static/index.html", media_type="text/html")
 
-@app.get("/api/article", response_model=List[SearchResult])
-async def search(query: str, start: int = 1):
-    api_key = os.getenv("GOOGLE_API_KEY")
-    search_engine_id = os.getenv("SEARCH_ENGINE_ID_Parenting")
+# @app.get("/api/article", response_model=List[SearchResult])
+# async def search(query: str, start: int = 1):
+#     api_key = os.getenv("GOOGLE_API_KEY")
+#     search_engine_id = os.getenv("SEARCH_ENGINE_ID_Parenting")
  
-    url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}&start={start}"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Search API request failed")
-    search_results = response.json().get("items", [])
-    results = [
-        SearchResult(title=item["title"], link=item["link"], snippet=item["snippet"]) 
-        for item in search_results
-    ]
-    return results
+#     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}&start={start}"
+#     async with httpx.AsyncClient() as client:
+#         response = await client.get(url)
+#     if response.status_code != 200:
+#         raise HTTPException(status_code=response.status_code, detail="Search API request failed")
+#     search_results = response.json().get("items", [])
+#     results = [
+#         SearchResult(title=item["title"], link=item["link"], snippet=item["snippet"]) 
+#         for item in search_results
+#     ]
+#     return results
+
+@app.get("/api/article", response_model=SearchResponse)
+async def search(query: str, start: int = 1):
+    try:
+        print(f"Received query: {query}, start: {start}")
+        results, recommended_items = await search_articles(query, start)
+        print(f"Results: {results}")
+        print(f"Recommended items: {recommended_items}")
+        return SearchResponse(search_results=results, recommended_items=recommended_items)
+    except HTTPException as e:
+        print(f"HTTPException: {str(e)}")
+        raise e
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/product", response_model=List[ProdSearchResult])
 async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0, max_pages: int = 0):
