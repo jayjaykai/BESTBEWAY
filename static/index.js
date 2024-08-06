@@ -5,6 +5,7 @@ const maxPages = 10;
 let loading = false;
 let allDataLoaded = false;
 let query = '';
+let maxSearchPage = 2;
 const loadedProducts = new Set(); // 用於存儲已加載的產品標題
 
 async function performSearch() {
@@ -37,7 +38,7 @@ async function searchProducts() {
     allDataLoaded = false;
     loadedProducts.clear();
 
-    document.getElementById('product-list').innerHTML = '';
+    document.getElementById('product-list').innerHTML = "";
 
     query = document.getElementById('search-query').value;
     console.log(query);
@@ -99,10 +100,14 @@ async function loadProducts() {
 
 async function searchArticles() {
     let query = document.getElementById("search-query").value;
-    let url = `/api/article?query=${encodeURIComponent(query)}`;
+    let url = `/api/article?query=${encodeURIComponent(query)}&pages=${maxSearchPage}`;
 
     let articleList = document.getElementById("article-list");
     articleList.innerHTML = "<p>Loading...</p>";
+
+    let recommendedList = document.getElementById("article-product");
+    recommendedList.innerHTML = "";
+
     let response = await fetch(url);
 
     if (!response.ok) {
@@ -119,48 +124,42 @@ async function searchArticles() {
 function displayArticles(articles) {
     let articleList = document.getElementById("article-list");
     articleList.innerHTML = "";
+    console.log(articles);
 
-    articles.forEach(article => {
-        let articleItem = document.createElement("div");
-        articleItem.className = "article-list__item";
+    let groupedArticles = Array.from({ length: maxSearchPage*10 }, () => []);
 
-        let title = document.createElement("h3");
-        title.className = "article-list__item-title";
-        title.textContent = article.title;
-        articleItem.appendChild(title);
-
-        let link = document.createElement("a");
-        link.className = "article-list__item-link";
-        link.href = article.link;
-        link.target = "_blank";
-        link.textContent = article.link;
-        articleItem.appendChild(link);
-
-        let snippet = document.createElement("p");
-        snippet.className = "article-list__item-snippet";
-        snippet.textContent = article.snippet;
-        articleItem.appendChild(snippet);
-
-        articleList.appendChild(articleItem);
+    articles.forEach((article, index) => {
+        let groupIndex = (index + 1) % (maxSearchPage*10);
+        groupedArticles[groupIndex].push(article);
     });
+
+    for (let i = 0; i < maxSearchPage*10; i++) {
+        groupedArticles[i].forEach(article => {
+            let articleItem = document.createElement("div");
+            articleItem.className = "article-list__item";
+
+            let title = document.createElement("h3");
+            title.className = "article-list__item-title";
+            title.textContent = article.title;
+            articleItem.appendChild(title);
+
+            let link = document.createElement("a");
+            link.className = "article-list__item-link";
+            link.href = article.link;
+            link.target = "_blank";
+            link.textContent = article.link;
+            articleItem.appendChild(link);
+
+            let snippet = document.createElement("p");
+            snippet.className = "article-list__item-snippet";
+            snippet.textContent = article.snippet;
+            articleItem.appendChild(snippet);
+
+            articleList.appendChild(articleItem);
+        });
+    }
 }
 
-// function displayRecommendedItems(recommendedItems) {
-//     let recommendedList = document.getElementById("article-product");
-//     recommendedList.innerHTML = "推薦商品： ";
-
-//     if (recommendedItems.length === 0) {
-//         recommendedList.innerHTML += "<p>No recommended items found.</p>";
-//         return;
-//     }
-
-//     recommendedItems.forEach(item => {
-//         let itemElement = document.createElement("span");
-//         itemElement.className = "recommended-items__item";
-//         itemElement.textContent = item;
-//         recommendedList.appendChild(itemElement);
-//     });
-// }
 function displayRecommendedItems(recommendedItems) {
     let recommendedList = document.getElementById("article-product");
     recommendedList.innerHTML = "推薦商品： ";
@@ -227,93 +226,3 @@ document.addEventListener('DOMContentLoaded', (event) => {
 });
 
 showTab('products');
-
-// let from = 0;
-// const pageSize = 60;
-// let currentPage = 0;
-// const maxPages = 5;
-// let loading = false;
-// let allDataLoaded = false;
-// let query = '';
-
-// async function searchProducts() {
-//     from = 0;
-//     currentPage = 0;
-//     allDataLoaded = false;
-
-//     document.getElementById('product-list').innerHTML = '';
-
-//     query = document.getElementById('search-query').value;
-//     console.log(query);
-//     await loadProducts();
-// }
-
-// async function loadProducts() {
-//     if (loading || allDataLoaded) return;
-//     loading = true;
-//     try {
-//         console.log("from", from)
-//         const response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
-//         const data = await response.json();
-//         console.log(data);
-//         if (data.length === 0) {
-//             allDataLoaded = true;
-//             loading = false;
-//             return;
-//         }
-//         from += pageSize;
-//         currentPage += 1;
-//         const productList = document.getElementById('product-list');
-//         data.forEach(item => {
-//             const div = document.createElement('div');
-//             div.className = 'product-list__item';
-//             div.innerHTML = `
-//                 <div class="product-list__image">
-//                         <img src="${item.image}" alt="${item.title}">
-//                 </div>
-//                 <div class="product-list__info">
-//                     <div class="product-list__title">${item.title}</div>
-//                     <div class="product-list__price">${item.price}</div>
-//                     <div class="product-list__seller">${item.seller}</div>
-//                     <a class="product-list__link" href="${item.link}" target="_blank">查看商品</a>
-//                 </div>
-//             `;
-//             productList.appendChild(div);
-//         });
-//     } catch (error) {
-//         console.error('Error loading products:', error);
-//     } finally {
-//         loading = false;
-//     }
-// }
-
-// // window.addEventListener('scroll', () => {
-// //     // 檢查特定元素是否進入視窗底部
-// //     let element = document.getElementById('product-list');
-// //     if (element) {
-// //         let rect = element.getBoundingClientRect();
-// //         console.log('rect.bottom: ' + rect.bottom);
-// //         console.log('element.scrollHeight: ' + element.scrollHeight);
-// //         console.log('element.scrollTop: ' + element.scrollTop);
-// //         console.log('element.clientHeight: ' + element.clientHeight);
-// //         console.log("loading before checking scroll:", loading);
-// //         if ((element.scrollHeight - element.scrollTop) <= element.clientHeight && !loading && !allDataLoaded && currentPage < maxPages) {
-// //             console.log("loading!!!");
-// //             loadProducts();
-// //         }
-// //     }
-// // });
-// window.addEventListener('scroll', () => {
-//     // 檢查特定元素是否進入視窗底部
-//     let element = document.getElementById('product-list');
-//     if (element) {
-//         let rect = element.getBoundingClientRect();
-//         // console.log('rect.bottom: ' + rect.bottom);
-//         // console.log('window.innerHeight: ' + window.innerHeight);
-//         // console.log("loading before checking scroll:", loading);
-//         if (rect.bottom <= window.innerHeight && !loading && !allDataLoaded && currentPage < maxPages) {
-//             console.log("loading!!!");
-//             loadProducts();
-//         }
-//     }
-// });
