@@ -6,11 +6,12 @@ let loading = false;
 let allDataLoaded = false;
 let query = '';
 let maxSearchPage = 2;
-const loadedProducts = new Set(); // 用於存儲已加載的產品標題
+const loadedProducts = new Set();
+let currentTab = 'products';
 
 async function performSearch() {
-    searchProducts();
-    searchArticles();
+    await searchProducts();
+    await searchArticles();
 }
 
 function showTab(tabId) {
@@ -30,6 +31,7 @@ function showTab(tabId) {
         articlesButton.classList.add('tabs__button--active');
         productsButton.classList.remove('tabs__button--active');
     }
+    currentTab = tabId;
 }
 
 async function searchProducts() {
@@ -41,36 +43,41 @@ async function searchProducts() {
     document.getElementById('product-list').innerHTML = "";
 
     query = document.getElementById('search-query').value;
-    console.log(query);
+    console.log('Search Query:', query);
     await loadProducts();
 }
 
 async function loadProducts() {
     if (loading || allDataLoaded) return;
     loading = true;
+    let productList = document.getElementById('product-list');
+
+    let loadingElement = document.createElement('div');
+    loadingElement.id = 'loading';
+    loadingElement.textContent = 'Loading...';
+    productList.appendChild(loadingElement);
+
     try {
-        console.log("from", from)
+        console.log("Loading products from:", from);
         let response = await fetch(`/api/product?query=${query}&from_=${from}&size=${pageSize}&current_page=${currentPage}&max_pages=${maxPages}`);
         let data = await response.json();
-        console.log(data);
-        if (data.items.length === 0) {
+        console.log('Product Data received:', data);
+
+        if (!Array.isArray(data) || data.length === 0) {
             allDataLoaded = true;
             loading = false;
+            productList.removeChild(loadingElement);
             return;
         }
-        // if (currentPage === 0) {
-        //     from = 0;  // 重置 from 以確保 Google Shopping 爬取從 0 開始
-        // } else {
-        //     from += pageSize;
-        // }
+
         from += pageSize;
         currentPage += 1;
-        let productList = document.getElementById('product-list');
+        productList.removeChild(loadingElement);
+
         let newItemsAdded = false;
-        data.items.forEach(item => {
-            // 檢查產品是否已經加載過
+        data.forEach(item => {
             if (!loadedProducts.has(item.title)) {
-                loadedProducts.add(item.title); // 將產品標題加入集合
+                loadedProducts.add(item.title);
                 let div = document.createElement('div');
                 div.className = 'product-list__item';
                 div.innerHTML = `
@@ -87,16 +94,18 @@ async function loadProducts() {
                 productList.appendChild(div);
                 newItemsAdded = true;
             }
-            if (!newItemsAdded) {
-                allDataLoaded = true;
-            }
         });
+
+        if (!newItemsAdded) {
+            allDataLoaded = true;
+        }
     } catch (error) {
         console.error('Error loading products:', error);
     } finally {
         loading = false;
     }
 }
+
 
 async function searchArticles() {
     let query = document.getElementById("search-query").value;
@@ -120,6 +129,36 @@ async function searchArticles() {
     displayArticles(search_results);
     displayRecommendedItems(recommended_items);
 }
+
+// function displayArticles(articles) {
+//     let articleList = document.getElementById("article-list");
+//     articleList.innerHTML = "";
+//     console.log('Article Data received:', articles);
+
+//     articles.forEach(article => {
+//         let articleItem = document.createElement("div");
+//         articleItem.className = "article-list__item";
+
+//         let title = document.createElement("h3");
+//         title.className = "article-list__item-title";
+//         title.textContent = article.title;
+//         articleItem.appendChild(title);
+
+//         let link = document.createElement("a");
+//         link.className = "article-list__item-link";
+//         link.href = article.link;
+//         link.target = "_blank";
+//         link.textContent = article.link;
+//         articleItem.appendChild(link);
+
+//         let snippet = document.createElement("p");
+//         snippet.className = "article-list__item-snippet";
+//         snippet.textContent = article.snippet;
+//         articleItem.appendChild(snippet);
+
+//         articleList.appendChild(articleItem);
+//     });
+// }
 
 function displayArticles(articles) {
     let articleList = document.getElementById("article-list");
@@ -160,6 +199,7 @@ function displayArticles(articles) {
     }
 }
 
+
 function displayRecommendedItems(recommendedItems) {
     let recommendedList = document.getElementById("article-product");
     recommendedList.innerHTML = "推薦商品： ";
@@ -173,7 +213,6 @@ function displayRecommendedItems(recommendedItems) {
         let itemElement = document.createElement("span");
         itemElement.className = "recommended-items__item";
         
-        // Create a link element
         let itemLink = document.createElement("a");
         itemLink.textContent = item;
         itemLink.onclick = function () {
@@ -183,19 +222,17 @@ function displayRecommendedItems(recommendedItems) {
         };
         
         itemElement.appendChild(itemLink);
-        itemElement.style.marginRight = "10px"; // Add margin for spacing
+        itemElement.style.marginRight = "10px";
         recommendedList.appendChild(itemElement);
     });
 }
 
 window.addEventListener('scroll', () => {
     query = document.getElementById('search-query').value;
-    if (query){
+    if (query) {
         let element = document.getElementById('product-list');
-        if (element) {
+        if (element && currentTab === 'products') {
             let rect = element.getBoundingClientRect();
-            // console.log('rect.bottom: ' + Math.floor(rect.bottom));
-            // console.log('window.innerHeight: ' + window.innerHeight);
             if (Math.floor(rect.bottom) <= window.innerHeight && !loading && !allDataLoaded && currentPage < maxPages) {
                 console.log("loading!!!");
                 loadProducts();
@@ -212,7 +249,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
         searchProducts(queryParam);
     }
 
-    // Add event listener to category links
     let categoryLinks = document.querySelectorAll('.category');
     categoryLinks.forEach(link => {
         link.addEventListener('click', (event) => {

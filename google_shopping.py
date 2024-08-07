@@ -296,7 +296,8 @@ async def search_products(query, from_=0, size=50, current_page=0, max_pages=5):
     # elif total_items_count < from_:  # 如果 Elasticsearch 沒有數據，則從 Google Shopping 爬取
     #     items = await fetch_google_products(query, size, current_page, max_pages)
     
-    return JSONResponse(content={"items": items, "total_items_count": total_items_count})
+    return {"items": items, "total_items_count": total_items_count}
+    # return JSONResponse(content={"items": items, "total_items_count": total_items_count})
 
 
 
