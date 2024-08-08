@@ -18,6 +18,11 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'  # 限制 Redis 使用最多 25% 的 CPU
+          memory: '256M'  # 限制 Redis 使用最多 256MB 的內存
 
   elasticsearch:
     image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
@@ -33,3 +38,45 @@ services:
     ports:
       - "9200:9200"
       - "9300:9300"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'  # 限制 Elasticsearch 使用最多 50% 的 CPU
+          memory: '512M'  # 限制 Elasticsearch 使用最多 512MB 的內存
+
+
+# version: '3.8'
+
+# services:
+#   web:
+#     build: .
+#     container_name: fastapi_app
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - redis
+#       - elasticsearch
+#     env_file:
+#       - .env
+
+#   redis:
+#     image: "redis:alpine"
+#     container_name: redis
+#     restart: always
+#     ports:
+#       - "6379:6379"
+
+#   elasticsearch:
+#     image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
+#     container_name: elasticsearch
+#     restart: always
+#     environment:
+#       - discovery.type=single-node
+#       - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
+#       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+#       - xpack.security.enabled=true
+#     env_file:
+#       - .env
+#     ports:
+#       - "9200:9200"
+#       - "9300:9300"
