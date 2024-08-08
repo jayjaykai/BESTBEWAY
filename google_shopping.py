@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 import random
 import re
 from bs4 import BeautifulSoup
@@ -6,7 +6,15 @@ from elasticsearch import Elasticsearch, exceptions
 import os
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
-from pyppeteer import launch
+from fake_useragent import UserAgent
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import gc
+# from pyppeteer import launch
 
 load_dotenv()
 # 初始化 Elasticsearch 客户端
@@ -131,32 +139,59 @@ def calculate_matching_rate(query, title):
     
     return matching_rate
 
-async def fetch_content(url, headers):
-    browser = await launch(
-        headless=True, 
-        executablePath=os.getenv("PYPPETEER_EXECUTABLE_PATH"),
-        args=['--no-sandbox', 
-              '--disable-setuid-sandbox', 
-              '--disable-dev-shm-usage', 
-              '--window-position=-10000,-10000',
-              '--window-size=1,1'
-            ],
-        ignoreHTTPSErrors=True
-    )
-    # print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
-    page = await browser.newPage()
-    await page.setUserAgent(headers['User-Agent'])
-    # 模擬人為操作
-    await page.evaluateOnNewDocument('''() => {
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => false,
-        });
-    }''')
+# async def fetch_content(url, headers):
+#     browser = await launch(
+#         headless=True, 
+#         executablePath=os.getenv("PYPPETEER_EXECUTABLE_PATH"),
+#         args=['--no-sandbox', 
+#               '--disable-setuid-sandbox', 
+#               '--disable-dev-shm-usage', 
+#               '--window-position=-10000,-10000',
+#               '--window-size=1,1'
+#             ],
+#         ignoreHTTPSErrors=True
+#     )
+#     # print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
+#     page = await browser.newPage()
+#     await page.setUserAgent(headers['User-Agent'])
+#     # 模擬人為操作
+#     await page.evaluateOnNewDocument('''() => {
+#         Object.defineProperty(navigator, 'webdriver', {
+#             get: () => false,
+#         });
+#     }''')
 
-    await page.goto(url, {'waitUntil': 'networkidle2'})
-    content = await page.content()
-    await browser.close()
-    return content
+#     await page.goto(url, {'waitUntil': 'networkidle2'})
+#     content = await page.content()
+#     await browser.close()
+#     return content
+
+def fetch_content(url, headers):
+    try:
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
+        chrome_options.add_argument(f"referer={headers['Referer']}")
+        # 設定 Chrome Driver 的執行黨路徑
+        chrome_options.chrome_executable_path=os.getenv("CHROMEDRIVER_PATH")
+        # 建立 Driver 物件實體，用程式操作瀏覽器運作
+        driver = webdriver.Chrome(options=chrome_options)
+        
+        driver.get(url)      
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
+
+        time.sleep(random.uniform(5, 10))
+        content = driver.page_source
+        driver.quit()
+        return content
+    except Exception as e:
+        print(f"Error during HTTP request: {e}")
+        return None
+    finally:
+        gc.collect()
 
 async def search_es_products(query, from_=0, size=50):
     items = []
