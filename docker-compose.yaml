@@ -21,8 +21,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'  # 限制 Redis 使用最多 25% 的 CPU
-          memory: '256M'  # 限制 Redis 使用最多 256MB 的內存
+          cpus: '0.1'  # 限制 Redis 使用最多 10% 的 CPU
+          memory: '128M'  # 限制 Redis 使用最多 256MB 的內存
 
   elasticsearch:
     image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
@@ -30,8 +30,8 @@ services:
     restart: always
     environment:
       - discovery.type=single-node
-      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
-      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      # - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
+      # - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - xpack.security.enabled=true
     env_file:
       - .env
