@@ -221,17 +221,17 @@ def search_products(query, current_page=1, size=60, max_page=10):
     return items
 
 # 單程序
-queries0_3 = ["奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "監視器", "汽車安全座椅", "床", "屁屁膏"]
+# queries0_3 = ["奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "監視器", "汽車安全座椅", "床", "屁屁膏"]
 # queries4_6 = ["防脹氣奶瓶", "益生菌", "寶乖亞", "固齒器", "吸鼻器", "衣服", "背帶", "洗髮沐浴"]
 # queries7_9 = ["副食品", "餐椅", "玩具", "安全護欄", "口水巾"]
 # queries10_12 = ["學步鞋子", "益智積木", "馬桶"]
-# queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液"]
-# queries = ["溫奶器", "安撫奶嘴", "監視器", "安全座椅", "床", "益生菌", "寶乖亞", "固齒器", "吸鼻器", "奶瓶消毒鍋", "防脹氣奶瓶"]
+# queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液", "濕紙巾"]
+queries = ["濕紙巾"]
 def main():
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
     
-    for query in queries0_3:
+    for query in queries:
         attempts = 0
         max_attempts = 5
         results = []
