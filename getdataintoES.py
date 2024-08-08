@@ -126,7 +126,7 @@ def fetch_content(url, headers):
         chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
         chrome_options.add_argument(f"referer={headers['Referer']}")
         # 設定 Chrome Driver 的執行黨路徑
-        chrome_options.chrome_executable_path="D:\python training\chromedriver.exe"
+        chrome_options.chrome_executable_path=os.getenv("CHROMEDRIVER_PATH")
         # 建立 Driver 物件實體，用程式操作瀏覽器運作
         driver = webdriver.Chrome(options=chrome_options)
         
