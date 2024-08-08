@@ -18,11 +18,12 @@ import gc
 
 load_dotenv()
 
+es = None
 # 初始化 Elasticsearch 客户端
 try:
     es = Elasticsearch(
         ["http://localhost:9200/"],
-        basic_auth=(os.getenv("ES_USER"), os.getenv("ES_PASSWORD"))
+        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
     )
     if not es.ping():
         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
