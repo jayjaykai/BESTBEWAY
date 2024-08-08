@@ -25,6 +25,7 @@ services:
     restart: always
     environment:
       - discovery.type=single-node
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - xpack.security.enabled=true
     env_file:

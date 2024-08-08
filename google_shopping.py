@@ -21,7 +21,7 @@ load_dotenv()
 try:
     es = Elasticsearch(
         ["http://localhost:9200/"],
-        basic_auth=(os.getenv("ES_USER"), os.getenv("ES_PASSWORD"))
+        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
     )
     # 連線到 Elasticsearch server
     if not es.ping():
