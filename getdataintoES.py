@@ -15,16 +15,18 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import gc
+from dotenv import get_key
 
 load_dotenv()
 
 es = None
 # 初始化 Elasticsearch 客户端
 try:
-    es = Elasticsearch(
-        ["http://localhost:9200/"],
-        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
-    )
+    # es = Elasticsearch(
+    #     ["http://localhost:9200/"],
+    #     basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
+    # )
+    es = Elasticsearch(["http://localhost:9200/"], basic_auth=(get_key(".env", "ELASTICSEARCH_USERNAME"), get_key(".env", "ELASTICSEARCH_PASSWORD")))
     if not es.ping():
         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
 except exceptions.ConnectionError as e:

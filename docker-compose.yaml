@@ -31,13 +31,12 @@ services:
     environment:
       - discovery.type=single-node
       - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - xpack.security.enabled=true
     env_file:
       - .env
     ports:
       - "9200:9200"
-      - "9300:9300"
     deploy:
       resources:
         limits:
