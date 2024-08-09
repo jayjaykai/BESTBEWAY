@@ -4,12 +4,12 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import httpx
+from elasticsearch import Elasticsearch, exceptions
 from pydantic import BaseModel
 from typing import List
 import os
 from dotenv import load_dotenv
 import asyncio
-from elasticsearch import Elasticsearch
 from google_shopping import search_products
 from model.mysql import get_session, get_articles_by_query, save_articles, initialize_database, close_database, Article
 from model.cache import Cache
@@ -21,6 +21,20 @@ load_dotenv()
 
 # Redis
 Cache.redis_client = Cache.create_redis_client() 
+
+# Elastic Search
+try:
+    es = Elasticsearch(
+        ["http://localhost:9200/"],
+        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
+    )
+    # 連線到 Elasticsearch server
+    if not es.ping():
+        raise exceptions.ConnectionError("Elasticsearch server is not reachable")
+except exceptions.ConnectionError as e:
+    print(f"Error connecting to Elasticsearch: {e}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
 
 class ProdSearchResult(BaseModel):
     title: str

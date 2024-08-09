@@ -25,20 +25,36 @@ services:
           memory: '128M'  # 限制 Redis 使用最多 256MB 的內存
 
   elasticsearch:
-    image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
+    image: "docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2"
     container_name: elasticsearch
     restart: always
     environment:
       - discovery.type=single-node
-      # - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
-      # - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
-      - xpack.security.enabled=true
-    env_file:
-      - .env
+      - ES_JAVA_OPTS="-Xms512m -Xmx512m"
     ports:
       - "9200:9200"
     deploy:
       resources:
         limits:
-          cpus: '0.5'  # 限制 Elasticsearch 使用最多 50% 的 CPU
-          memory: '512M'  # 限制 Elasticsearch 使用最多 512MB 的內存
+          cpus: '0.5'
+          memory: '512M'
+    mem_limit: 2g
+    memswap_limit: 2g
+  # elasticsearch:
+  #   image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
+  #   container_name: elasticsearch
+  #   restart: always
+  #   environment:
+  #     - discovery.type=single-node}
+  #     - xpack.security.enabled=true
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "9200:9200"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'  # 限制 Elasticsearch 使用最多 50% 的 CPU
+  #         memory: '512M'  # 限制 Elasticsearch 使用最多 512MB 的內存
+  #   mem_limit: 2g
+  #   memswap_limit: 2g  # 配置虛擬內存（swap）
