@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from google_shopping import search_products
+from model.elasticsearch_client import get_elasticsearch_client
 from model.mysql import get_session, get_articles_by_query, save_articles, initialize_database, close_database, Article
 from model.cache import Cache
 from google_search_api import search_articles, SearchResult, SearchResponse
@@ -23,18 +24,30 @@ load_dotenv()
 Cache.redis_client = Cache.create_redis_client() 
 
 # Elastic Search
-try:
-    es = Elasticsearch(
-        ["http://localhost:9200/"],
-        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
-    )
-    # 連線到 Elasticsearch server
-    if not es.ping():
-        raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-except exceptions.ConnectionError as e:
-    print(f"Error connecting to Elasticsearch: {e}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
+# 應用啟動時初始化 Elasticsearch
+es = get_elasticsearch_client()
+
+# es_host = os.getenv("ELASTICSEARCH_HOST", "elasticsearch")
+# es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
+# es_username = os.getenv("ELASTICSEARCH_USERNAME")
+# es_password = os.getenv("ELASTICSEARCH_PASSWORD")
+
+# es_url = f"http://{es_host}:{es_port}/"
+# print("ES_URL: ", es_url)
+# print("username: ", es_username)
+# print("password: ", es_password)
+
+# try:
+#     es = Elasticsearch(
+#         [es_url],
+#         basic_auth=(es_username, es_password) if es_username and es_password else None
+#     )
+#     if not es.ping():
+#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
+# except exceptions.ConnectionError as e:
+#     print(f"Error connecting to Elasticsearch: {e}")
+# except Exception as e:
+#     print(f"Unexpected error: {e}")
 
 class ProdSearchResult(BaseModel):
     title: str

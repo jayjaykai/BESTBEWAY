@@ -14,46 +14,71 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import gc
+from model.elasticsearch_client import get_elasticsearch_client
 # from pyppeteer import launch
 
 load_dotenv()
 # 初始化 Elasticsearch 客户端
-try:
-    es = Elasticsearch(
-        ["http://localhost:9200/"],
-        basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
-    )
-    # 連線到 Elasticsearch server
-    if not es.ping():
-        raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-except exceptions.ConnectionError as e:
-    print(f"Error connecting to Elasticsearch: {e}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
+# Elastic Search
+def ensure_es_client_initialized():
+    es = get_elasticsearch_client()
+    if es is None:
+        raise Exception("Failed to initialize Elasticsearch client.")
+    return es
+# es_host = os.getenv("ELASTICSEARCH_HOST", "elasticsearch")
+# es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
+# es_username = os.getenv("ELASTICSEARCH_USERNAME")
+# es_password = os.getenv("ELASTICSEARCH_PASSWORD")
 
-index_name = "products"
-try:
-    # 測試删除索引
-    # es.indices.delete(index=index_name, ignore=[400, 404])
-    # print("Testing and deleting data at first!")
-    if not es.indices.exists(index=index_name):
-        es.indices.create(index=index_name, body={
-            "mappings": {
-                "properties": {
-                    "query": {"type": "text"},
-                    "title": {"type": "text"},
-                    "link": {"type": "text"},
-                    "price": {"type": "text"},
-                    "seller": {"type": "text"},
-                    "image": {"type": "text"},
-                    "timestamp": {"type": "date"}
-                }
-            }
-        })
-except exceptions.ConnectionError as e:
-    print(f"Error connecting to Elasticsearch: {e}")
-except exceptions.RequestError as e:
-    print(f"Error creating index: {e}")
+# es_url = f"http://{es_host}:{es_port}/"
+# print("ES_URL: ", es_url)
+# print("username: ", es_username)
+# print("password: ", es_password)
+
+# try:
+#     es = Elasticsearch(
+#         [es_url],
+#         basic_auth=(es_username, es_password) if es_username and es_password else None
+#     )
+#     if not es.ping():
+#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
+#     print("Successfully connected to Elasticsearch")
+
+#     # 檢查並建立 products 索引
+#     index_name = "products"
+#     if not es.indices.exists(index=index_name):
+#         es.indices.create(index=index_name)
+#         print(f"Index '{index_name}' created successfully.")
+#     else:
+#         print(f"Index '{index_name}' already exists.")
+# except exceptions.ConnectionError as e:
+#     print(f"Error connecting to Elasticsearch: {e}")
+# except Exception as e:
+#     print(f"Unexpected error: {e}")
+
+# index_name = "products"
+# try:
+#     # 測試删除索引
+#     # es.indices.delete(index=index_name, ignore=[400, 404])
+#     # print("Testing and deleting data at first!")
+#     if not es.indices.exists(index=index_name):
+#         es.indices.create(index=index_name, body={
+#             "mappings": {
+#                 "properties": {
+#                     "query": {"type": "text"},
+#                     "title": {"type": "text"},
+#                     "link": {"type": "text"},
+#                     "price": {"type": "text"},
+#                     "seller": {"type": "text"},
+#                     "image": {"type": "text"},
+#                     "timestamp": {"type": "date"}
+#                 }
+#             }
+#         })
+# except exceptions.ConnectionError as e:
+#     print(f"Error connecting to Elasticsearch: {e}")
+# except exceptions.RequestError as e:
+#     print(f"Error creating index: {e}")
 
 class Generator:
     @staticmethod
@@ -196,6 +221,8 @@ def fetch_content(url, headers):
 async def search_es_products(query, from_=0, size=50):
     items = []
     try:
+        es = ensure_es_client_initialized()
+        index_name = "products"
         print(query)
         print(f"Querying Elasticsearch with from_={from_}")
         # 獲取符合查詢條件的總資料數量

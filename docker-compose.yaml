@@ -6,11 +6,34 @@ services:
     container_name: fastapi_app
     ports:
       - "8000:8000"
+      - "80:8000"
     depends_on:
       - redis
       - elasticsearch
     env_file:
       - .env
+    networks:
+      - bestbeway_network
+    command: ["sh", "-c", "sleep 30 && uvicorn app:app --host 0.0.0.0 --port 8000"]  
+
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false  # 關閉安全性設定，測試環境建議
+      - bootstrap.memory_lock=true  # 鎖定記憶體，提升效能
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"  # 調整 JVM 記憶體設定
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - es_data:/usr/share/elasticsearch/data  
+    env_file:
+      - .env  
+    networks:
+      - bestbeway_network
 
   redis:
     image: "redis:alpine"
@@ -18,43 +41,12 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'  # 限制 Redis 使用最多 10% 的 CPU
-          memory: '128M'  # 限制 Redis 使用最多 256MB 的內存
+    networks:
+      - bestbeway_network
 
-  elasticsearch:
-    image: "docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2"
-    container_name: elasticsearch
-    restart: always
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS="-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: '512M'
-    mem_limit: 2g
-    memswap_limit: 2g
-  # elasticsearch:
-  #   image: "docker.elastic.co/elasticsearch/elasticsearch:8.4.0"
-  #   container_name: elasticsearch
-  #   restart: always
-  #   environment:
-  #     - discovery.type=single-node}
-  #     - xpack.security.enabled=true
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "9200:9200"
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '0.5'  # 限制 Elasticsearch 使用最多 50% 的 CPU
-  #         memory: '512M'  # 限制 Elasticsearch 使用最多 512MB 的內存
-  #   mem_limit: 2g
-  #   memswap_limit: 2g  # 配置虛擬內存（swap）
+networks:
+  bestbeway_network:
+    driver: bridge
+
+volumes:
+  es_data:

@@ -15,48 +15,52 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import gc
-from dotenv import get_key
+from model.elasticsearch_client import get_elasticsearch_client
 
 load_dotenv()
 
-es = None
-# 初始化 Elasticsearch 客户端
-try:
-    # es = Elasticsearch(
-    #     ["http://localhost:9200/"],
-    #     basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
-    # )
-    es = Elasticsearch(["http://localhost:9200/"], basic_auth=(get_key(".env", "ELASTICSEARCH_USERNAME"), get_key(".env", "ELASTICSEARCH_PASSWORD")))
-    if not es.ping():
-        raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-except exceptions.ConnectionError as e:
-    print(f"Error connecting to Elasticsearch: {e}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
+def ensure_es_client_initialized():
+    es = get_elasticsearch_client("Local")
+    if es is None:
+        raise Exception("Failed to initialize Elasticsearch client.")
+    return es
+# es = None
+# # 初始化 Elasticsearch 客户端
+# try:
+#     es = Elasticsearch(
+#         ["http://localhost:9200/"],
+#         basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
+#     )
+#     if not es.ping():
+#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
+# except exceptions.ConnectionError as e:
+#     print(f"Error connecting to Elasticsearch: {e}")
+# except Exception as e:
+#     print(f"Unexpected error: {e}")
 
-index_name = "products"
-try:
-    # 拿掉一開始把Elastic database 全部的資料刪除，改在爬取資料前刪除該query的資料
-    # es.indices.delete(index=index_name, ignore=[400, 404])
-    # print("Testing and deleting data at first!")
-    if not es.indices.exists(index=index_name):
-        es.indices.create(index=index_name, body={
-            "mappings": {
-                "properties": {
-                    "query": {"type": "text"},
-                    "title": {"type": "text"},
-                    "link": {"type": "text"},
-                    "price": {"type": "text"},
-                    "seller": {"type": "text"},
-                    "image": {"type": "text"},
-                    "timestamp": {"type": "date"}
-                }
-            }
-        })
-except exceptions.ConnectionError as e:
-    print(f"Error connecting to Elasticsearch: {e}")
-except exceptions.RequestError as e:
-    print(f"Error creating index: {e}")
+# index_name = "products"
+# try:
+#     # 拿掉一開始把Elastic database 全部的資料刪除，改在爬取資料前刪除該query的資料
+#     # es.indices.delete(index=index_name, ignore=[400, 404])
+#     # print("Testing and deleting data at first!")
+#     if not es.indices.exists(index=index_name):
+#         es.indices.create(index=index_name, body={
+#             "mappings": {
+#                 "properties": {
+#                     "query": {"type": "text"},
+#                     "title": {"type": "text"},
+#                     "link": {"type": "text"},
+#                     "price": {"type": "text"},
+#                     "seller": {"type": "text"},
+#                     "image": {"type": "text"},
+#                     "timestamp": {"type": "date"}
+#                 }
+#             }
+#         })
+# except exceptions.ConnectionError as e:
+#     print(f"Error connecting to Elasticsearch: {e}")
+# except exceptions.RequestError as e:
+#     print(f"Error creating index: {e}")
 
 class Generator:
     @staticmethod
@@ -148,11 +152,13 @@ def fetch_content(url, headers):
 
 def search_products(query, current_page=1, size=60, max_page=10):
     items = []
+    es = ensure_es_client_initialized()
+    index_name = "products"
     base_url = "https://www.google.com"
     ua = UserAgent()
     user_agent = ua.random
     try:
-        # 執行爬蟲前，先將原先在Elastic database 的資料移除
+        ## 執行爬蟲前，先將原先在Elastic database 的資料移除
         es.delete_by_query(index=index_name, body={
             "query": {
                 "match_phrase": {
@@ -229,7 +235,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
 # queries7_9 = ["副食品", "餐椅", "玩具", "安全護欄", "口水巾"]
 # queries10_12 = ["學步鞋子", "益智積木", "馬桶"]
 # queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液", "濕紙巾"]
-queries = ["濕紙巾"]
+queries = ["奶粉"]
 def main():
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
