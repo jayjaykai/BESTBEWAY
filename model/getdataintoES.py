@@ -3,7 +3,7 @@ import re
 from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch, exceptions
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 import random
 import time
 import concurrent.futures
@@ -235,17 +235,33 @@ def search_products(query, current_page=1, size=60, max_page=10):
 # queries7_9 = ["副食品", "餐椅", "玩具", "安全護欄", "口水巾"]
 # queries10_12 = ["學步鞋子", "益智積木", "馬桶"]
 # queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液", "濕紙巾"]
-queries = ["奶粉"]
-def main():
+# queries = ["奶粉"]
+def update_failed_queries(query):
+    failed_queries = os.getenv("QUERIES_GROUP_6", "")
+    if failed_queries:
+        failed_queries_list = failed_queries.split(',')
+    else:
+        failed_queries_list = []
+    
+    if query not in failed_queries_list:
+        failed_queries_list.append(query)
+        updated_failed_queries = ','.join(failed_queries_list)
+        set_key('.env', 'QUERIES_GROUP_6', updated_failed_queries)
+        
+def main(queries):
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
+    # 如果 QUERIES_GROUP_6 是空值，不需要補槍
+    if os.getenv("QUERIES_GROUP_6") == "":
+        print("QUERIES_GROUP_6 is empty, skipping execution.")
+        return
     
     for query in queries:
         attempts = 0
         max_attempts = 5
         results = []
 
-        while attempts < max_attempts:
+        while attempts <= max_attempts:
             results = search_products(query)
             if len(results) > 0:
                 break
@@ -254,6 +270,8 @@ def main():
             time.sleep(random.uniform(10, 20))  # 重試前等待一段時間
 
         print(f"Query '{query}' count: ", len(results))
+        if len(results) == 0:
+            update_failed_queries(query) # 爬蟲失敗紀錄到新的陣列去，下次再補槍
         time.sleep(random.uniform(5, 10))
 
     end_time = datetime.now()

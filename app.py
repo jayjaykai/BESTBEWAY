@@ -8,17 +8,52 @@ from elasticsearch import Elasticsearch, exceptions
 from pydantic import BaseModel
 from typing import List
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 import asyncio
 from google_shopping import search_products
 from model.elasticsearch_client import get_elasticsearch_client
 from model.mysql import get_session, get_articles_by_query, save_articles, initialize_database, close_database, Article
 from model.cache import Cache
 from google_search_api import search_articles, SearchResult, SearchResponse
+from apscheduler.schedulers.background import BackgroundScheduler
+from model.getdataintoES import main as update_data
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 load_dotenv()
+
+# Create an APScheduler instance
+scheduler = BackgroundScheduler(timezone="Asia/Taipei")
+
+# Read queries from environment variables
+queries_list = [
+    os.getenv("QUERIES_GROUP_1").split(","),
+    os.getenv("QUERIES_GROUP_2").split(","),
+    os.getenv("QUERIES_GROUP_3").split(","),
+    os.getenv("QUERIES_GROUP_4").split(","),
+    os.getenv("QUERIES_GROUP_5").split(","),
+    os.getenv("QUERIES_GROUP_6").split(",")
+]
+
+print("queries_list: ", queries_list)
+
+# Schedule the tasks
+for i, queries in enumerate(queries_list):
+    set_key('.env', 'QUERIES_GROUP_6', "")
+    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(0 + i) % 24, minute=35, args=[queries])
+
+scheduler.start()
+@app.on_event("startup")
+async def startup_event():
+    print("Starting up FastAPI and APScheduler...")
+
+# @app.get("/")
+# async def read_root():
+#     return {"message": "FastAPI with APScheduler is running!"}
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.shutdown()
 
 # Redis
 Cache.redis_client = Cache.create_redis_client() 
@@ -26,28 +61,6 @@ Cache.redis_client = Cache.create_redis_client()
 # Elastic Search
 # 應用啟動時初始化 Elasticsearch
 es = get_elasticsearch_client()
-
-# es_host = os.getenv("ELASTICSEARCH_HOST", "elasticsearch")
-# es_port = os.getenv("ELASTICSEARCH_PORT", "9200")
-# es_username = os.getenv("ELASTICSEARCH_USERNAME")
-# es_password = os.getenv("ELASTICSEARCH_PASSWORD")
-
-# es_url = f"http://{es_host}:{es_port}/"
-# print("ES_URL: ", es_url)
-# print("username: ", es_username)
-# print("password: ", es_password)
-
-# try:
-#     es = Elasticsearch(
-#         [es_url],
-#         basic_auth=(es_username, es_password) if es_username and es_password else None
-#     )
-#     if not es.ping():
-#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-# except exceptions.ConnectionError as e:
-#     print(f"Error connecting to Elasticsearch: {e}")
-# except Exception as e:
-#     print(f"Unexpected error: {e}")
 
 class ProdSearchResult(BaseModel):
     title: str
@@ -126,26 +139,3 @@ async def search_product(query: str, from_: int = 0, size: int = 50, current_pag
     except Exception as e:
         print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# 寫在另一個爬蟲程式    
-# def fetch_article_content(url):
-#     response = requests.get(url)
-#     if response.status_code == 200:
-#         soup = BeautifulSoup(response.content, 'html.parser')
-#         # 假设文章内容在<div>标签内，具体的选择器根据实际网页结构进行调整
-#         content_div = soup.find('div', {'class': 'article-content'})
-#         if content_div:
-#             return content_div.get_text()
-#     return None
-
-# @app.get("/api/full_articles", response_model=List[ArticleContent])
-# async def get_full_articles(query: str, start: int = 1):
-#     search_results = await search(query, start)
-#     full_articles = []
-#     for result in search_results:
-#         content = fetch_article_content(result.link)
-#         if content:
-#             full_articles.append(ArticleContent(title=result.title, link=result.link, content=content))
-#     return full_articles    
