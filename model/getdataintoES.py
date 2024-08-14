@@ -123,6 +123,46 @@ def calculate_matching_rate(query, title):
     matching_rate = matching_count / len(query_set) if len(query_set) > 0 else 0
     return matching_rate
 
+# def fetch_content(url, headers):
+#     try:
+#         # chrome_options = Options()
+#         # chrome_options.add_argument("--headless")
+#         # chrome_options.add_argument("--disable-gpu")
+#         # chrome_options.add_argument("--no-sandbox")
+#         # chrome_options.add_argument("--disable-dev-shm-usage")
+#         # chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
+#         # chrome_options.add_argument(f"referer={headers['Referer']}")
+#         # # 設定 Chrome Driver 的執行黨路徑
+#         # chrome_options = webdriver.ChromeOptions()
+#         # time.sleep(3)
+#         # driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
+#         # driver.get(url)      
+#         # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
+#         chrome_options = Options()
+#         chrome_options.add_argument("--headless")
+#         chrome_options.add_argument("--disable-gpu")
+#         chrome_options.add_argument("--no-sandbox")
+#         chrome_options.add_argument("--disable-dev-shm-usage")
+#         chrome_options.add_argument("--remote-debugging-port=9222")
+#         chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
+#         chrome_options.add_argument(f"referer={headers['Referer']}")
+
+#         # 建立 Driver 物件實體，用程式操作瀏覽器運作
+#         driver = webdriver.Chrome(options=chrome_options)
+#         time.sleep(3)
+#         driver.get(url)
+#         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
+
+#         time.sleep(random.uniform(5, 10))
+#         content = driver.page_source
+#         driver.quit()
+#         return content
+#     except Exception as e:
+#         print(f"Error during HTTP request: {e}")
+#         return None
+#     finally:
+#         gc.collect()
+
 def fetch_content(url, headers):
     try:
         chrome_options = Options()
@@ -130,18 +170,22 @@ def fetch_content(url, headers):
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
         chrome_options.add_argument(f"referer={headers['Referer']}")
-        # 設定 Chrome Driver 的執行黨路徑
-        chrome_options.chrome_executable_path=os.getenv("CHROMEDRIVER_PATH")
+
+        # ChromeDriver 路径
+        chromedriver_path = os.getenv("CHROMEDRIVER_PATH")
+        print("Using ChromeDriver from:", chromedriver_path)
+
         # 建立 Driver 物件實體，用程式操作瀏覽器運作
-        driver = webdriver.Chrome(options=chrome_options)
-        
-        driver.get(url)      
+        driver = webdriver.Chrome(executable_path=chromedriver_path, options=chrome_options)
+        driver.get(url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
 
         time.sleep(random.uniform(5, 10))
         content = driver.page_source
+        # print("content: ", content)
         driver.quit()
         return content
     except Exception as e:
@@ -156,7 +200,169 @@ def search_products(query, current_page=1, size=60, max_page=10):
     index_name = "products"
     base_url = "https://www.google.com"
     ua = UserAgent()
-    user_agent = ua.random
+
+    try:
+        # 执行爬虫前，先将原先在Elastic database 的资料移除
+        es.delete_by_query(index=index_name, body={
+            "query": {
+                "match_phrase": {
+                    "query": query
+                }
+            }
+        })
+
+        query_with_baby = f"{query} 嬰兒"
+        for page in range(current_page, max_page + 1):
+            retry_count = 0  # 初始化重试计数器
+            max_retries = 8  # 最大重试次数
+
+            while retry_count <= max_retries:
+                print(page)
+                user_agent = ua.random
+                search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
+                headers = {
+                    'User-Agent': user_agent,
+                    'Referer': base_url
+                }
+                print(search_url)
+
+                content = fetch_content(search_url, headers)
+                if content is None:
+                    retry_count += 1
+                    continue
+
+                soup = BeautifulSoup(content, 'html.parser')
+                time.sleep(random.uniform(5, 10))
+                new_items = []
+
+                # 初始化 title 和 link
+                title = 'No title'
+                link = 'No link'
+                price = 'N/A'
+                seller = 'N/A'
+                image_url = 'N/A'
+
+                if soup.find_all('h3', class_='tAxDx'):
+                    for item in soup.find_all('h3', class_='tAxDx'):
+                        title = item.get_text() if item.get_text() else 'No title'
+                        link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
+
+                        price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
+                        if price_tag:
+                            price = price_tag.get_text()
+
+                        seller_tag = item.find_next('div', class_='aULzUe IuHnof')
+                        if seller_tag:
+                            seller = seller_tag.get_text()
+
+                        arOc1c_div = item.find_previous('div', class_='ArOc1c')
+                        if arOc1c_div:
+                            image_tag = arOc1c_div.find('img')
+                            if image_tag and 'src' in image_tag.attrs:
+                                image_url = image_tag['src']
+
+                        print(f"Title: {title}")
+                        print(f"Link: {link}")
+                        print(f"Price: {price}")
+                        print(f"Seller: {seller}")
+                        print(f"Image URL: {image_url}")
+                        print("----------")
+                        print(f"title: {title} link: {link}")
+
+                        if title != 'No title' and link != 'No link':
+                            print("Before calculate_matching_rate()...")
+                            matching_rate = calculate_matching_rate(query, title)
+                            print(f"matching_rate: {matching_rate} query: {query} title: {title}")
+                            if matching_rate > 0:
+                                new_items.append({
+                                    "query": query,
+                                    "title": title,
+                                    "link": base_url + link,
+                                    "price": price,
+                                    "seller": seller,
+                                    "image": image_url,
+                                    "timestamp": datetime.now()
+                                })
+
+                    items.extend(new_items[:size])
+                    break
+
+                elif soup.find_all('div', class_='xcR77'):
+                    for item in soup.find_all('div', class_='xcR77'):
+                        title_tag = item.find('div', class_='rgHvZc')
+                        title = title_tag.get_text() if title_tag else 'No title'
+
+                        link_tag = title_tag.find('a', href=True) if title_tag else None
+                        link = link_tag['href'] if link_tag else 'No link'
+
+                        price_tag = item.find('div', class_='dD8iuc')
+                        price = price_tag.get_text() if price_tag else 'N/A'
+
+                        seller_tag = price_tag.find_next('div', class_='dD8iuc') if price_tag else None
+                        seller = seller_tag.get_text() if seller_tag else 'N/A'
+
+                        image_tag = item.find('img')
+                        image_url = image_tag['src'] if image_tag else 'N/A'
+
+                        print(f"Title: {title}")
+                        print(f"Link: {link}")
+                        print(f"Price: {price}")
+                        print(f"Seller: {seller}")
+                        print(f"Image URL: {image_url}")
+                        print("----------")
+                        print(f"title: {title} link: {link}")
+
+                        if title != 'No title' and link != 'No link':
+                            print("Before calculate_matching_rate()...")
+                            matching_rate = calculate_matching_rate(query, title)
+                            print(f"matching_rate: {matching_rate} query: {query} title: {title}")
+                            if matching_rate > 0:
+                                new_items.append({
+                                    "query": query,
+                                    "title": title,
+                                    "link": base_url + link,
+                                    "price": price,
+                                    "seller": seller,
+                                    "image": image_url,
+                                    "timestamp": datetime.now()
+                                })
+
+                    # 标记成功并跳出重试循环
+                    items.extend(new_items[:size])
+                    break
+
+                else:
+                    print("No known structure found in the HTML content.")
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        print(f"Max retries reached for page {page}, moving to next page.")
+                        break
+                    else:
+                        print(f"Retrying page {page} (Attempt {retry_count}/{max_retries})")
+                        time.sleep(random.uniform(10, 20))
+                        continue  # 重新执行当前循环
+
+            for item in items:
+                try:
+                    es.index(index=index_name, id=item['title'], body=item)
+                except Exception as e:
+                    print(f"Error indexing to Elasticsearch: {e}")
+
+    except Exception as e:
+        print(f"Error during HTTP request: {e}")
+        return None
+
+    print("len(items): ", items)
+    return items if items else None
+
+
+# def search_products(query, current_page=1, size=60, max_page=10):
+    items = []
+    es = ensure_es_client_initialized()
+    index_name = "products"
+    base_url = "https://www.google.com"
+    ua = UserAgent()
+
     try:
         ## 執行爬蟲前，先將原先在Elastic database 的資料移除
         es.delete_by_query(index=index_name, body={
@@ -170,6 +376,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
         query_with_baby = f"{query} 嬰兒"
         for page in range(current_page, max_page + 1):
             print(page)
+            user_agent = ua.random
             search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
             headers = {
                 'User-Agent': user_agent,
@@ -184,34 +391,101 @@ def search_products(query, current_page=1, size=60, max_page=10):
             soup = BeautifulSoup(content, 'html.parser')
             time.sleep(random.uniform(5, 10))
             new_items = []
-            for item in soup.find_all('h3', class_='tAxDx'):
-                title = item.get_text()
-                link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
-                price = 'N/A'
-                price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
-                if price_tag:
-                    price = price_tag.get_text()
-                seller = 'N/A'
-                seller_tag = item.find_next('div', class_='aULzUe IuHnof')
-                if seller_tag:
-                    seller = seller_tag.get_text()
-                image_url = 'N/A'
-                arOc1c_div = item.find_previous('div', class_='ArOc1c')
-                if arOc1c_div:
-                    image_tag = arOc1c_div.find('img')
-                    if image_tag and 'src' in image_tag.attrs:
-                        image_url = image_tag['src']
-                matching_rate = calculate_matching_rate(query, title)
-                if matching_rate >0:
-                    new_items.append({
-                        "query": query,
-                        "title": title,
-                        "link": base_url + link,
-                        "price": price,
-                        "seller": seller,
-                        "image": image_url,
-                        "timestamp": datetime.now()
-                    })
+            
+            # 初始化 title 和 link
+            title = 'No title'
+            link = 'No link'
+            price = 'N/A'
+            seller = 'N/A'
+            image_url = 'N/A'
+            
+            # 根據不同的結構進行解析
+            if soup.find_all('h3', class_='tAxDx'):
+                for item in soup.find_all('h3', class_='tAxDx'):
+                    title = item.get_text() if item.get_text() else 'No title'
+                    link = item.find_parent('a')['href'] if item.find_parent('a') else 'No link'
+                    
+                    price_tag = item.find_next('span', class_='a8Pemb OFFNJ')
+                    if price_tag:
+                        price = price_tag.get_text()
+                    
+                    seller_tag = item.find_next('div', class_='aULzUe IuHnof')
+                    if seller_tag:
+                        seller = seller_tag.get_text()
+                    
+                    arOc1c_div = item.find_previous('div', class_='ArOc1c')
+                    if arOc1c_div:
+                        image_tag = arOc1c_div.find('img')
+                        if image_tag and 'src' in image_tag.attrs:
+                            image_url = image_tag['src']
+
+                    print(f"Title: {title}")
+                    print(f"Link: {link}")
+                    print(f"Price: {price}")
+                    print(f"Seller: {seller}")
+                    print(f"Image URL: {image_url}")
+                    print("----------")
+                    print(f"title: {title} link: {link}")
+
+                    if title != 'No title' and link != 'No link':
+                        print("Before calculate_matching_rate()...")
+                        matching_rate = calculate_matching_rate(query, title)
+                        print(f"matching_rate: {matching_rate} query: {query} title: {title}")
+                        if matching_rate >0:
+                            new_items.append({
+                                "query": query,
+                                "title": title,
+                                "link": base_url + link,
+                                "price": price,
+                                "seller": seller,
+                                "image": image_url,
+                                "timestamp": datetime.now()
+                            })
+
+            elif soup.find_all('div', class_='xcR77'):
+                for item in soup.find_all('div', class_='xcR77'):
+                    title_tag = item.find('div', class_='rgHvZc')
+                    title = title_tag.get_text() if title_tag else 'No title'
+                    
+                    link_tag = title_tag.find('a', href=True) if title_tag else None
+                    link = link_tag['href'] if link_tag else 'No link'
+                    
+                    price_tag = item.find('div', class_='dD8iuc')
+                    price = price_tag.get_text() if price_tag else 'N/A'
+                    
+                    seller_tag = price_tag.find_next('div', class_='dD8iuc') if price_tag else None
+                    seller = seller_tag.get_text() if seller_tag else 'N/A'
+                    
+                    image_tag = item.find('img')
+                    image_url = image_tag['src'] if image_tag else 'N/A'
+
+                    print(f"Title: {title}")
+                    print(f"Link: {link}")
+                    print(f"Price: {price}")
+                    print(f"Seller: {seller}")
+                    print(f"Image URL: {image_url}")
+                    print("----------")
+                    print(f"title: {title} link: {link}")
+
+                    if title != 'No title' and link != 'No link':
+                        print("Before calculate_matching_rate()...")
+                        matching_rate = calculate_matching_rate(query, title)
+                        print(f"matching_rate: {matching_rate} query: {query} title: {title}")
+                        if matching_rate >0:
+                            new_items.append({
+                                "query": query,
+                                "title": title,
+                                "link": base_url + link,
+                                "price": price,
+                                "seller": seller,
+                                "image": image_url,
+                                "timestamp": datetime.now()
+                            })
+                    
+            else:
+                print("No known structure found in the HTML content.")
+        
+            print("new_items: ", new_items)
             if new_items:
                 items.extend(new_items[:size])
             else:
@@ -226,8 +500,8 @@ def search_products(query, current_page=1, size=60, max_page=10):
     except Exception as e:
         print(f"Error during HTTP request: {e}")
         return None
-    
-    return items
+    print("len(items): ", items)
+    return items if items else None
 
 # 單程序
 # queries0_3 = ["奶粉", "溫奶器", "奶瓶消毒鍋", "安撫奶嘴", "監視器", "汽車安全座椅", "床", "屁屁膏"]
@@ -236,6 +510,10 @@ def search_products(query, current_page=1, size=60, max_page=10):
 # queries10_12 = ["學步鞋子", "益智積木", "馬桶"]
 # queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液", "濕紙巾"]
 # queries = ["奶粉"]
+
+# 加載 .env 檔案
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+
 def update_failed_queries(query):
     failed_queries = os.getenv("QUERIES_GROUP_6", "")
     if failed_queries:
@@ -246,28 +524,30 @@ def update_failed_queries(query):
     if query not in failed_queries_list:
         failed_queries_list.append(query)
         updated_failed_queries = ','.join(failed_queries_list)
-        set_key('.env', 'QUERIES_GROUP_6', updated_failed_queries)
+        print("Current working directory:", os.getcwd())
+        set_key(os.path.join(os.path.dirname(__file__), '../.env'), 'QUERIES_GROUP_6', updated_failed_queries)
+        # set_key('../.env', 'QUERIES_GROUP_6', updated_failed_queries)
         
 def main(queries):
     start_time = datetime.now()
     print(f"開始執行時間: {start_time}")
     # 如果 QUERIES_GROUP_6 是空值，不需要補槍
-    if os.getenv("QUERIES_GROUP_6") == "":
+    if queries == [""] and os.getenv("QUERIES_GROUP_6") == "":
         print("QUERIES_GROUP_6 is empty, skipping execution.")
         return
     
     for query in queries:
         attempts = 0
-        max_attempts = 5
+        max_attempts = 3
         results = []
 
         while attempts <= max_attempts:
-            results = search_products(query)
+            results = search_products(query) or []
             if len(results) > 0:
                 break
             attempts += 1
-            print(f"Query '{query}' attempt {attempts} failed, retrying...")
-            time.sleep(random.uniform(10, 20))  # 重試前等待一段時間
+            print(f"Query '{query}' attempt {attempts} failed at time {datetime.now()}, retrying...")
+            time.sleep(random.uniform(15, 30))  # 重試前等待一段時間
 
         print(f"Query '{query}' count: ", len(results))
         if len(results) == 0:

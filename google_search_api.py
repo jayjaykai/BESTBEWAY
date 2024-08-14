@@ -31,6 +31,7 @@ queries = [
 
 async def fetch_search_result(client: httpx.AsyncClient, api_key: str, search_engine_id: str, query: str, start: int) -> List[Dict[str, Any]]:
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}&start={start}"
+    print(f"Fetch data from url: {url}")
     response = await client.get(url)
     if response.status_code != 200:
         raise HTTPException(status_code=response.status_code, detail="Search API request failed")
@@ -50,12 +51,12 @@ async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> Lis
     # api_key = os.getenv("GOOGLE_API_KEY")
     # search_engine_id = os.getenv("SEARCH_ENGINE_ID_Parenting")
     # search_results = await fetch_search_results(api_key, search_engine_id, query, start, num_pages)
+    print("Get data from Google API...")
     api_key = os.getenv("GOOGLE_API_KEY")
     search_engine_ids = [
         os.getenv("SEARCH_ENGINE_ID_Parenting"),
         os.getenv("SEARCH_ENGINE_ID_Mababy"),
         os.getenv("SEARCH_ENGINE_ID_Mamaway")
-        # Add more search engine IDs here if needed
     ]
     search_results = await fetch_all_results(api_key, query, start, num_pages, search_engine_ids)
     

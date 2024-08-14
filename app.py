@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -22,16 +23,17 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 load_dotenv()
 
+executor = ThreadPoolExecutor(max_workers=2)
 # Create an APScheduler instance
 scheduler = BackgroundScheduler(timezone="Asia/Taipei")
 
 # Read queries from environment variables
 queries_list = [
     os.getenv("QUERIES_GROUP_1").split(","),
-    os.getenv("QUERIES_GROUP_2").split(","),
-    os.getenv("QUERIES_GROUP_3").split(","),
-    os.getenv("QUERIES_GROUP_4").split(","),
-    os.getenv("QUERIES_GROUP_5").split(","),
+    # os.getenv("QUERIES_GROUP_2").split(","),
+    # os.getenv("QUERIES_GROUP_3").split(","),
+    # os.getenv("QUERIES_GROUP_4").split(","),
+    # os.getenv("QUERIES_GROUP_5").split(","),
     os.getenv("QUERIES_GROUP_6").split(",")
 ]
 
@@ -40,16 +42,13 @@ print("queries_list: ", queries_list)
 # Schedule the tasks
 for i, queries in enumerate(queries_list):
     set_key('.env', 'QUERIES_GROUP_6', "")
-    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(0 + i) % 24, minute=35, args=[queries])
+    # scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=i+23, minute=10, args=[queries])
+    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(13 + i) % 24, minute=3, args=[queries])
 
 scheduler.start()
 @app.on_event("startup")
 async def startup_event():
     print("Starting up FastAPI and APScheduler...")
-
-# @app.get("/")
-# async def read_root():
-#     return {"message": "FastAPI with APScheduler is running!"}
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -59,7 +58,6 @@ async def shutdown_event():
 Cache.redis_client = Cache.create_redis_client() 
 
 # Elastic Search
-# 應用啟動時初始化 Elasticsearch
 es = get_elasticsearch_client()
 
 class ProdSearchResult(BaseModel):
@@ -85,6 +83,7 @@ async def search(query: str, start: int = 1, pages: int = 1):
             print("Use Redis article Cache!")
             return JSONResponse(content=json.loads(cached_data))
         
+        print("Get data from MySQL DB...")
         db_articles = get_articles_by_query(session, query)
         if db_articles:
             results = [SearchResult(title=article.title, link=article.link, snippet=article.snippet) for article in db_articles]
@@ -94,17 +93,17 @@ async def search(query: str, start: int = 1, pages: int = 1):
                 Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
         else:
             results, recommended_items = await search_articles(query, start, pages)
-            save_articles(session, results, query, recommended_items)
+             # 使用執行緒來非同步執行 save_articles
+            executor.submit(save_articles, session, results, query, recommended_items)
+            # save_articles(session, results, query, recommended_items)
             print("Write Redis article Cache!")
             Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
-
+        print("Return data!")
         return SearchResponse(search_results=results, recommended_items=recommended_items)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
 
 # @app.get("/api/product", response_model=List[ProdSearchResult])
 # async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0, max_pages: int = 0):

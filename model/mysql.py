@@ -34,14 +34,14 @@ class DBConfig:
         self.pool = MySQLConnectionPool(
             pool_name="myPool",
             pool_size=pool_size,
-            host=os.getenv("DB_HOST"),
+            host=os.getenv("DB_HOST", "localhost"),
             database=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             port=3306
         )
 
-        self.engine = create_engine(f'mysql+mysqlconnector://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST")}/{os.getenv("DB_NAME")}')
+        self.engine = create_engine(f'mysql+mysqlconnector://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST", "localhost")}/{os.getenv("DB_NAME")}')
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     def close_connection_pool(self):
@@ -69,6 +69,7 @@ def get_articles_by_query(db_session: Session, query: str) -> List[Article]:
     return db_session.query(Article).filter(Article.query.ilike(f"%{query}%")).all()
 
 def save_articles(db_session: Session, articles: List[SearchResult], query: str, recommended_items: List[str]):
+    print("Saving articles data into MySQL DB...")
     try:
         for article in articles:
             db_article = Article(
@@ -85,4 +86,5 @@ def save_articles(db_session: Session, articles: List[SearchResult], query: str,
         db_session.rollback()
         print("Failed to save articles:", str(e))
     finally:
+        print(f"Saved articles data {query} into MySQL DB!")
         db_session.close()

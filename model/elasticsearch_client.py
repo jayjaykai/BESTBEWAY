@@ -15,7 +15,8 @@ def get_elasticsearch_client(host="client"):
     if es is None:
         try:
             if host=="Local":
-                es_host = os.getenv("ELASTICSEARCH_LOCALHOST", "localhost")
+                # es_host = os.getenv("ELASTICSEARCH_LOCALHOST", "localhost")
+                es_host = os.getenv("ELASTICSEARCH_HOST", "localhost")
                 es_url = f"http://{es_host}:{es_port}/"
 
             print("ES_URL: ", es_url)

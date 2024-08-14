@@ -10,8 +10,10 @@ const loadedProducts = new Set();
 let currentTab = 'products';
 
 async function performSearch() {
-    await searchProducts();
-    await searchArticles();
+    // await searchProducts();
+    // await searchArticles();
+    searchProducts();
+    searchArticles();
 }
 
 function showTab(tabId) {

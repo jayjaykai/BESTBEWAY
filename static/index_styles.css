@@ -255,6 +255,7 @@ html{
 
 .product-list__image {
     width: 100%;
+    max-width: 100%; /* 確保圖片不超過容器寬度 */
     height: 150px;
     display: flex;
     justify-content: center;
