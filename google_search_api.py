@@ -22,12 +22,7 @@ class SearchResponse(BaseModel):
     recommended_items: List[str]
 
 # 商品列表
-queries = [
-    "奶粉", "溫奶器", "消毒鍋", "奶嘴", "監視器", "座椅", "床",
-    "防脹氣奶瓶", "益生菌", "寶乖亞", "固齒器", "吸鼻器", "衣服", "背帶",
-    "副食品", "餐椅", "玩具", "護欄", "口水巾", "洗髮沐浴", "濕紙巾",
-    "鞋子", "益智積木", "馬桶", "護膚膏", "白噪音", "屁屁膏","乳液"
-]
+product_queries = os.getenv('PRODUCT_QUERIES').split(',')
 
 async def fetch_search_result(client: httpx.AsyncClient, api_key: str, search_engine_id: str, query: str, start: int) -> List[Dict[str, Any]]:
     url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}&start={start}"
@@ -90,7 +85,7 @@ async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> Lis
 
     # 比較網頁字串和商品列表，找到匹配的商品
     matched_items = set()
-    for query in queries:
+    for query in product_queries:
         for word in all_words:
             if query in word and len(word) > 1:  # 確保做匹配的字串長度大於1
                 # print("matched word add: ", word)

@@ -85,9 +85,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製應用程序代碼
 COPY . .
 
-# 複製 .env 文件
-COPY .env .env
-
 EXPOSE 8000
 
 # 啟動應用程序
