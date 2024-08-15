@@ -24,43 +24,6 @@ def ensure_es_client_initialized():
     if es is None:
         raise Exception("Failed to initialize Elasticsearch client.")
     return es
-# es = None
-# # 初始化 Elasticsearch 客户端
-# try:
-#     es = Elasticsearch(
-#         ["http://localhost:9200/"],
-#         basic_auth=(os.getenv("ELASTICSEARCH_USERNAME"), os.getenv("ELASTICSEARCH_PASSWORD"))
-#     )
-#     if not es.ping():
-#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-# except exceptions.ConnectionError as e:
-#     print(f"Error connecting to Elasticsearch: {e}")
-# except Exception as e:
-#     print(f"Unexpected error: {e}")
-
-# index_name = "products"
-# try:
-#     # 拿掉一開始把Elastic database 全部的資料刪除，改在爬取資料前刪除該query的資料
-#     # es.indices.delete(index=index_name, ignore=[400, 404])
-#     # print("Testing and deleting data at first!")
-#     if not es.indices.exists(index=index_name):
-#         es.indices.create(index=index_name, body={
-#             "mappings": {
-#                 "properties": {
-#                     "query": {"type": "text"},
-#                     "title": {"type": "text"},
-#                     "link": {"type": "text"},
-#                     "price": {"type": "text"},
-#                     "seller": {"type": "text"},
-#                     "image": {"type": "text"},
-#                     "timestamp": {"type": "date"}
-#                 }
-#             }
-#         })
-# except exceptions.ConnectionError as e:
-#     print(f"Error connecting to Elasticsearch: {e}")
-# except exceptions.RequestError as e:
-#     print(f"Error creating index: {e}")
 
 class Generator:
     @staticmethod
@@ -123,49 +86,10 @@ def calculate_matching_rate(query, title):
     matching_rate = matching_count / len(query_set) if len(query_set) > 0 else 0
     return matching_rate
 
-# def fetch_content(url, headers):
-#     try:
-#         # chrome_options = Options()
-#         # chrome_options.add_argument("--headless")
-#         # chrome_options.add_argument("--disable-gpu")
-#         # chrome_options.add_argument("--no-sandbox")
-#         # chrome_options.add_argument("--disable-dev-shm-usage")
-#         # chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
-#         # chrome_options.add_argument(f"referer={headers['Referer']}")
-#         # # 設定 Chrome Driver 的執行黨路徑
-#         # chrome_options = webdriver.ChromeOptions()
-#         # time.sleep(3)
-#         # driver = webdriver.Chrome(executable_path=os.getenv("CHROMEDRIVER_PATH"), options=chrome_options)
-#         # driver.get(url)      
-#         # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
-#         chrome_options = Options()
-#         chrome_options.add_argument("--headless")
-#         chrome_options.add_argument("--disable-gpu")
-#         chrome_options.add_argument("--no-sandbox")
-#         chrome_options.add_argument("--disable-dev-shm-usage")
-#         chrome_options.add_argument("--remote-debugging-port=9222")
-#         chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
-#         chrome_options.add_argument(f"referer={headers['Referer']}")
-
-#         # 建立 Driver 物件實體，用程式操作瀏覽器運作
-#         driver = webdriver.Chrome(options=chrome_options)
-#         time.sleep(3)
-#         driver.get(url)
-#         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
-
-#         time.sleep(random.uniform(5, 10))
-#         content = driver.page_source
-#         driver.quit()
-#         return content
-#     except Exception as e:
-#         print(f"Error during HTTP request: {e}")
-#         return None
-#     finally:
-#         gc.collect()
-
 def fetch_content(url, headers):
     try:
         chrome_options = Options()
+        chrome_options.add_argument("--lang=zh-TW")
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
@@ -186,6 +110,12 @@ def fetch_content(url, headers):
         time.sleep(random.uniform(5, 10))
         content = driver.page_source
         # print("content: ", content)
+        # 將檔案儲存到 /tmp/ 下
+        # file_path = "/tmp/original_html.html"
+        # with open(file_path, 'w', encoding='utf-8') as file:
+        #     file.write(content)
+        # print(f"original_html.html content saved to {file_path}")
+
         driver.quit()
         return content
     except Exception as e:
@@ -202,7 +132,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
     ua = UserAgent()
 
     try:
-        # 执行爬虫前，先将原先在Elastic database 的资料移除
+        # Elastic database 資料移除
         es.delete_by_query(index=index_name, body={
             "query": {
                 "match_phrase": {
@@ -213,8 +143,8 @@ def search_products(query, current_page=1, size=60, max_page=10):
 
         query_with_baby = f"{query} 嬰兒"
         for page in range(current_page, max_page + 1):
-            retry_count = 0  # 初始化重试计数器
-            max_retries = 8  # 最大重试次数
+            retry_count = 0
+            max_retries = 8
 
             while retry_count <= max_retries:
                 print(page)
@@ -232,15 +162,25 @@ def search_products(query, current_page=1, size=60, max_page=10):
                     continue
 
                 soup = BeautifulSoup(content, 'html.parser')
+
+                # 將檔案儲存到 /tmp/ 下
+                # pretty_html = soup.prettify()
+                # file_path = "/tmp/pretty_html.html"
+
+                # with open(file_path, 'a', encoding='utf-8') as file:
+                #     file.write(pretty_html)
+                #     file.write("\n\n")
+                # print(f"HTML content saved to {file_path}")
+
                 time.sleep(random.uniform(5, 10))
                 new_items = []
 
                 # 初始化 title 和 link
-                title = 'No title'
-                link = 'No link'
-                price = 'N/A'
-                seller = 'N/A'
-                image_url = 'N/A'
+                # title = 'No title'
+                # link = 'No link'
+                # price = 'N/A'
+                # seller = 'N/A'
+                # image_url = 'N/A'
 
                 if soup.find_all('h3', class_='tAxDx'):
                     for item in soup.find_all('h3', class_='tAxDx'):
@@ -261,16 +201,15 @@ def search_products(query, current_page=1, size=60, max_page=10):
                             if image_tag and 'src' in image_tag.attrs:
                                 image_url = image_tag['src']
 
+                        print("----------")
                         print(f"Title: {title}")
                         print(f"Link: {link}")
                         print(f"Price: {price}")
                         print(f"Seller: {seller}")
                         print(f"Image URL: {image_url}")
                         print("----------")
-                        print(f"title: {title} link: {link}")
 
                         if title != 'No title' and link != 'No link':
-                            print("Before calculate_matching_rate()...")
                             matching_rate = calculate_matching_rate(query, title)
                             print(f"matching_rate: {matching_rate} query: {query} title: {title}")
                             if matching_rate > 0:
@@ -286,34 +225,39 @@ def search_products(query, current_page=1, size=60, max_page=10):
 
                     items.extend(new_items[:size])
                     break
-
+                
                 elif soup.find_all('div', class_='xcR77'):
                     for item in soup.find_all('div', class_='xcR77'):
+                        # print("HTML content of item:")
+                        # print(item.prettify())
+
                         title_tag = item.find('div', class_='rgHvZc')
                         title = title_tag.get_text() if title_tag else 'No title'
 
                         link_tag = title_tag.find('a', href=True) if title_tag else None
                         link = link_tag['href'] if link_tag else 'No link'
 
-                        price_tag = item.find('div', class_='dD8iuc')
+                        price_tag = item.find('span', class_='HRLxBb')
                         price = price_tag.get_text() if price_tag else 'N/A'
 
-                        seller_tag = price_tag.find_next('div', class_='dD8iuc') if price_tag else None
-                        seller = seller_tag.get_text() if seller_tag else 'N/A'
+                        seller_tag = item.find('div', class_='dD8iuc')
+                        if seller_tag:
+                            seller_text = seller_tag.get_text()
+                            seller = seller_text.split('，商家：')[-1].strip() if '，商家：' in seller_text else seller_text.strip()
+                        else:
+                            seller = 'N/A'
 
                         image_tag = item.find('img')
                         image_url = image_tag['src'] if image_tag else 'N/A'
-
+                        print("----------")
                         print(f"Title: {title}")
                         print(f"Link: {link}")
                         print(f"Price: {price}")
                         print(f"Seller: {seller}")
                         print(f"Image URL: {image_url}")
                         print("----------")
-                        print(f"title: {title} link: {link}")
 
                         if title != 'No title' and link != 'No link':
-                            print("Before calculate_matching_rate()...")
                             matching_rate = calculate_matching_rate(query, title)
                             print(f"matching_rate: {matching_rate} query: {query} title: {title}")
                             if matching_rate > 0:
@@ -327,11 +271,11 @@ def search_products(query, current_page=1, size=60, max_page=10):
                                     "timestamp": datetime.now()
                                 })
 
-                    # 标记成功并跳出重试循环
                     items.extend(new_items[:size])
                     break
 
                 else:
+                    new_items.append("Wait Next Run")
                     print("No known structure found in the HTML content.")
                     retry_count += 1
                     if retry_count > max_retries:
@@ -340,19 +284,22 @@ def search_products(query, current_page=1, size=60, max_page=10):
                     else:
                         print(f"Retrying page {page} (Attempt {retry_count}/{max_retries})")
                         time.sleep(random.uniform(10, 20))
-                        continue  # 重新执行当前循环
+                        continue  # retry
+                
+            if not new_items:  # 如果當前頁面沒有任何匹配的商品，跳出for loop不再執行
+                break
 
-            for item in items:
-                try:
-                    es.index(index=index_name, id=item['title'], body=item)
-                except Exception as e:
-                    print(f"Error indexing to Elasticsearch: {e}")
+        for item in items:
+            try:
+                es.index(index=index_name, id=item['title'], body=item)
+            except Exception as e:
+                print(f"Error indexing to Elasticsearch: {e}")
 
     except Exception as e:
         print(f"Error during HTTP request: {e}")
         return None
 
-    print("len(items): ", items)
+    print("len(items): ", len(items))
     return items if items else None
 
 
@@ -511,10 +458,10 @@ def search_products(query, current_page=1, size=60, max_page=10):
 # queries_symptom = ["黃疸", "腸絞痛", "皮膚炎", "白噪音", "護膚膏", "乳液", "濕紙巾"]
 # queries = ["奶粉"]
 
-# 加載 .env 檔案
-load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
-
 def update_failed_queries(query):
+    # 加載 .env 檔案
+    load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+
     failed_queries = os.getenv("QUERIES_GROUP_6", "")
     if failed_queries:
         failed_queries_list = failed_queries.split(',')

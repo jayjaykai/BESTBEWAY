@@ -30,20 +30,22 @@ scheduler = BackgroundScheduler(timezone="Asia/Taipei")
 # Read queries from environment variables
 queries_list = [
     os.getenv("QUERIES_GROUP_1").split(","),
-    # os.getenv("QUERIES_GROUP_2").split(","),
-    # os.getenv("QUERIES_GROUP_3").split(","),
-    # os.getenv("QUERIES_GROUP_4").split(","),
-    # os.getenv("QUERIES_GROUP_5").split(","),
+    os.getenv("QUERIES_GROUP_2").split(","),
+    os.getenv("QUERIES_GROUP_3").split(","),
+    os.getenv("QUERIES_GROUP_4").split(","),
+    os.getenv("QUERIES_GROUP_5").split(","),
     os.getenv("QUERIES_GROUP_6").split(",")
 ]
 
 print("queries_list: ", queries_list)
+print(f"APScheduler Start at {os.getenv('SCHEDULE_STARTHOUR')}:{os.getenv('SCHEDULE_STARTMIN')}")
+print(f"APScheduler Jobs between every {os.getenv('SCHEDULE_BETWEENHOUR') } hour(s)")
 
 # Schedule the tasks
 for i, queries in enumerate(queries_list):
     set_key('.env', 'QUERIES_GROUP_6', "")
     # scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=i+23, minute=10, args=[queries])
-    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(13 + i) % 24, minute=3, args=[queries])
+    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(int(os.getenv("SCHEDULE_STARTHOUR")) + int(os.getenv("SCHEDULE_BETWEENHOUR"))*i) % 24, minute=int(os.getenv("SCHEDULE_STARTMIN")), args=[queries])
 
 scheduler.start()
 @app.on_event("startup")
