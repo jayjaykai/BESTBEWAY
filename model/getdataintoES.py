@@ -149,7 +149,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
             while retry_count <= max_retries:
                 print(page)
                 user_agent = ua.random
-                search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
+                search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&lr=lang_zh-TW&cr=countryTW&gl=tw&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
                 headers = {
                     'User-Agent': user_agent,
                     'Referer': base_url
