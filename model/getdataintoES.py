@@ -19,6 +19,12 @@ from model.elasticsearch_client import get_elasticsearch_client
 
 load_dotenv()
 
+user_agents = [
+    'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+]
+
 def ensure_es_client_initialized():
     es = get_elasticsearch_client("Local")
     if es is None:
@@ -95,6 +101,7 @@ def fetch_content(url, headers):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--window-size=3840,2160")
         chrome_options.add_argument(f"user-agent={headers['User-Agent']}")
         chrome_options.add_argument(f"referer={headers['Referer']}")
 
@@ -104,9 +111,18 @@ def fetch_content(url, headers):
 
         # 建立 Driver 物件實體，用程式操作瀏覽器運作
         driver = webdriver.Chrome(executable_path=chromedriver_path, options=chrome_options)
+        # hide WebDriver
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+                })
+            """
+        })
         driver.get(url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div')))
-
+        # # 滾動頁面加載更多資料
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(random.uniform(5, 10))
         content = driver.page_source
         # print("content: ", content)
@@ -129,7 +145,7 @@ def search_products(query, current_page=1, size=60, max_page=10):
     es = ensure_es_client_initialized()
     index_name = "products"
     base_url = "https://www.google.com"
-    ua = UserAgent()
+    # ua = UserAgent()
 
     try:
         # Elastic database 資料移除
@@ -148,7 +164,8 @@ def search_products(query, current_page=1, size=60, max_page=10):
 
             while retry_count <= max_retries:
                 print(page)
-                user_agent = ua.random
+                # user_agent = ua.random
+                user_agent = random.choice(user_agents)
                 search_url = f"{base_url}/search?tbm=shop&hl=zh-TW&lr=lang_zh-TW&cr=countryTW&gl=tw&q={query_with_baby}&start={(page - 1) * size}&tbs=vw:g"
                 headers = {
                     'User-Agent': user_agent,

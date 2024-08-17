@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, String, Integer, Text
+from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from mysql.connector.pooling import MySQLConnectionPool
@@ -20,6 +20,11 @@ class Article(Base):
     title = Column(String(255))
     snippet = Column(Text)
     recommended_items = Column(String(255))
+
+    # 加入資料防重入機制
+    __table_args__ = (
+        UniqueConstraint('query', 'link', name='_query_link_uc'),
+    )
 
 class DBConfig:
     def __init__(self):

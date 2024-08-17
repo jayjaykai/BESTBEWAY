@@ -29,7 +29,7 @@ scheduler = BackgroundScheduler(timezone="Asia/Taipei")
 
 # Read queries from environment variables
 queries_list = [
-    os.getenv("QUERIES_GROUP_1").split(","),
+    # os.getenv("QUERIES_GROUP_1").split(","),
     os.getenv("QUERIES_GROUP_2").split(","),
     os.getenv("QUERIES_GROUP_3").split(","),
     os.getenv("QUERIES_GROUP_4").split(","),
