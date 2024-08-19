@@ -17,8 +17,25 @@ services:
       - .env
     networks:
       - bestbeway_network
+    volumes:
+      - ./static:/app/static  
     command: ["sh", "-c", "sleep 30 && uvicorn app:app --host 0.0.0.0 --port 8080"]  
 
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/ssl
+    networks:
+      - bestbeway_network
+    depends_on:
+      - web
+      
   elasticsearch:
     image: elasticsearch:7.17.0
     container_name: elasticsearch
