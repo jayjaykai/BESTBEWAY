@@ -7,9 +7,8 @@ services:
       - TZ=Asia/Taipei
     container_name: fastapi_app
     # shm_size: '1gb'
-    ports:
-      - "8080:8080"
-      - "80:8080"
+    # ports:
+    #   - "8080:8080"
     depends_on:
       - redis
       - elasticsearch
@@ -18,8 +17,8 @@ services:
     networks:
       - bestbeway_network
     volumes:
-      - ./static:/app/static  
-    command: ["sh", "-c", "sleep 30 && uvicorn app:app --host 0.0.0.0 --port 8080"]  
+      - ./static:/app/static
+    command: ["sh", "-c", "sleep 30 && uvicorn app:app --host 0.0.0.0 --port 8080"]
 
   nginx:
     image: nginx:latest
@@ -29,13 +28,16 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/ssl
+      - /etc/nginx/sites-available/bestbeway.tdt-tw.online:/etc/nginx/conf.d/bestbeway.tdt-tw.online.conf
+      - /etc/letsencrypt/live/bestbeway.tdt-tw.online:/etc/letsencrypt/live/bestbeway.tdt-tw.online
+      - /etc/letsencrypt/archive/bestbeway.tdt-tw.online:/etc/letsencrypt/archive/bestbeway.tdt-tw.online
+      - /etc/letsencrypt/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
     networks:
       - bestbeway_network
     depends_on:
       - web
-      
+    command: ["/bin/sh", "-c", "rm /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+  
   elasticsearch:
     image: elasticsearch:7.17.0
     container_name: elasticsearch
@@ -49,9 +51,9 @@ services:
       - 9200:9200
       - 9300:9300
     volumes:
-      - es_data:/usr/share/elasticsearch/data  
+      - es_data:/usr/share/elasticsearch/data
     env_file:
-      - .env  
+      - .env
     networks:
       - bestbeway_network
 
