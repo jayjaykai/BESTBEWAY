@@ -34,8 +34,8 @@
     </div>
     <div class="tabs">
         <div class="tabs__container">
-            <button id="productsButton" class="tabs__button" onclick="showTab('products')">推薦商品</button>
-            <button id="articlesButton" class="tabs__button" onclick="showTab('articles')">推薦文章</button>
+            <button id="productsButton" class="tabs__button" onmouseover="showTab('products')">推薦商品</button>
+            <button id="articlesButton" class="tabs__button" onmouseover="showTab('articles')">推薦文章</button>
         </div>
     </div>
     <div class="babyImage-Container" id="products">
@@ -87,6 +87,8 @@
         <div class="product-list" id="product-list"></div>
     </div>
     <div class="tabs__content" id="articles" style="display: none;">
+        <div class="article-common__title">寶寶常見問題</div>
+        <div class="article-common" id="article-common"></div>
         <!-- 文章内容 -->
         <div class="article-product" id="article-product"></div>
         <div class="article-list" id="article-list">

@@ -108,6 +108,62 @@ async function loadProducts() {
     }
 }
 
+async function searchCommonArticles() {
+    let query = "寶寶常見問題";
+    let url = `/api/article?query=${encodeURIComponent(query)}&pages=${1}`;
+
+    let articleList = document.getElementById("article-common");
+    let response = await fetch(url);
+
+    if (!response.ok) {
+        console.error("Search API request failed");
+        articleList.innerHTML = "<p>Error loading articles.</p>";
+        return;
+    }
+
+    let  articles = await response.json();
+    displayCommonArticles(articles.search_results);
+}
+
+function displayCommonArticles(articles) {
+    let articleList = document.getElementById("article-common");
+    articleList.innerHTML = "";
+    if (articles.length === 0) {
+        articleList.innerHTML = "<p>No articles found.</p>";
+        return;
+    }
+
+    console.log("common articles:", articles);
+    let groupedArticles = Array.from({ length: maxSearchPage*10 }, () => []);
+
+    articles.forEach((article, index) => {
+        let groupIndex = (index + 1) % 10;
+        groupedArticles[groupIndex].push(article);
+    });
+
+    for (let i = 0; i < 10; i++) {
+        groupedArticles[i].forEach(article => {
+            let articleItem = document.createElement("div");
+            articleItem.className = "article-common-item";
+    
+            let articleTitle = document.createElement("h3");
+            articleTitle.textContent = article.title;
+            articleItem.appendChild(articleTitle);
+    
+            let articleSnippet = document.createElement("p");
+            articleSnippet.textContent = article.snippet;
+            articleItem.appendChild(articleSnippet);
+    
+            let articleLink = document.createElement("a");
+            articleLink.href = article.link;
+            articleLink.textContent = "Read more";
+            articleLink.target = "_blank";
+            articleItem.appendChild(articleLink);
+    
+            articleList.appendChild(articleItem);
+        });
+    }
+}
 
 async function searchArticles() {
     let query = document.getElementById("search-query").value;
@@ -131,36 +187,6 @@ async function searchArticles() {
     displayArticles(search_results);
     displayRecommendedItems(recommended_items);
 }
-
-// function displayArticles(articles) {
-//     let articleList = document.getElementById("article-list");
-//     articleList.innerHTML = "";
-//     console.log('Article Data received:', articles);
-
-//     articles.forEach(article => {
-//         let articleItem = document.createElement("div");
-//         articleItem.className = "article-list__item";
-
-//         let title = document.createElement("h3");
-//         title.className = "article-list__item-title";
-//         title.textContent = article.title;
-//         articleItem.appendChild(title);
-
-//         let link = document.createElement("a");
-//         link.className = "article-list__item-link";
-//         link.href = article.link;
-//         link.target = "_blank";
-//         link.textContent = article.link;
-//         articleItem.appendChild(link);
-
-//         let snippet = document.createElement("p");
-//         snippet.className = "article-list__item-snippet";
-//         snippet.textContent = article.snippet;
-//         articleItem.appendChild(snippet);
-
-//         articleList.appendChild(articleItem);
-//     });
-// }
 
 function displayArticles(articles) {
     let articleList = document.getElementById("article-list");
@@ -263,4 +289,5 @@ document.addEventListener('DOMContentLoaded', (event) => {
     });
 });
 
+searchCommonArticles();
 showTab('products');

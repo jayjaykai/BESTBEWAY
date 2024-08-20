@@ -307,6 +307,55 @@ html{
     padding: 20px;
 }
 
+/* article-common */
+.article-common__title {
+    font-size: 24px;
+    font-weight: bold;
+    color:#008080;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.article-common {
+    margin: 10px 0;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto; 
+    padding: 10px;
+    gap: 10px;
+    background-color: #f0f0f0; 
+}
+
+.article-common-item {
+    width: 300px;
+    flex-shrink: 0; 
+    background-color: #9edbdb;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.article-common-item h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.article-common-item p {
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
+.article-common-item a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.article-common-item a:hover {
+    text-decoration: underline;
+}
+/* article-common */
+
 .article-list {
     padding: 20px;
     background-color: #f9f9f9;
