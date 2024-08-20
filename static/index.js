@@ -50,18 +50,12 @@ async function searchProducts() {
     query = document.getElementById('search-query').value;
     console.log('Search Query:', query);
     await loadProducts();
-    scrollToProductList();
-}
+    // scrollToProductList();
 
-function scrollToProductList() {
-    let productList = document.getElementById('product-list');
-    let elementTopPosition = productList.getBoundingClientRect().top + window.scrollY;
-    let offset = 1;
-    let navBarHeight = 60;
-    window.scrollTo({
-        top: elementTopPosition + offset - navBarHeight,
-        behavior: 'smooth'
-    });
+    if (currentTab === 'products') 
+    {
+        scrollToItemList(document.getElementById('product-list'));
+    } 
 }
 
 async function loadProducts() {
@@ -201,6 +195,22 @@ async function searchArticles() {
     let { search_results, recommended_items } = await response.json();
     displayArticles(search_results);
     displayRecommendedItems(recommended_items);
+
+    if (currentTab === 'articles') {
+        scrollToItemList(document.getElementById('article-product'));
+    }
+}
+
+function scrollToItemList(item) {
+    let itemList = item;
+    let elementTopPosition = itemList.getBoundingClientRect().top + window.scrollY;
+    let offset = 1;
+    let navBarHeight = 60;
+
+    window.scrollTo({
+        top: elementTopPosition + offset - navBarHeight,
+        behavior: 'smooth'
+    });
 }
 
 function displayArticles(articles) {
@@ -260,8 +270,8 @@ function displayRecommendedItems(recommendedItems) {
         itemLink.textContent = item;
         itemLink.onclick = function () {
             document.getElementById("search-query").value = item;
-            searchProducts();
             showTab('products');
+            searchProducts();
         };
         
         itemElement.appendChild(itemLink);
