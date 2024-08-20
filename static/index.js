@@ -47,6 +47,12 @@ async function searchProducts() {
     query = document.getElementById('search-query').value;
     console.log('Search Query:', query);
     await loadProducts();
+    scrollToProductList();
+}
+
+function scrollToProductList() {
+    let productList = document.getElementById('product-list');
+    productList.scrollIntoView({ behavior: 'smooth' });
 }
 
 async function loadProducts() {

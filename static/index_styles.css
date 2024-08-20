@@ -322,6 +322,7 @@ html{
     flex-wrap: nowrap;
     overflow-x: auto; 
     padding: 10px;
+    border-radius: 5px;
     gap: 10px;
     background-color: #f0f0f0; 
 }
