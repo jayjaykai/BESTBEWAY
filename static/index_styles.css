@@ -304,17 +304,17 @@ html{
     flex-direction: column;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px;
 }
 
 /* article-common */
-.article-common__title {
+/* .article-common__title {
     font-size: 24px;
     font-weight: bold;
     color:#008080;
     margin-bottom: 10px;
     text-align: center;
-}
+} */
 
 .article-common {
     margin: 10px 0;

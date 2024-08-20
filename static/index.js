@@ -10,8 +10,11 @@ const loadedProducts = new Set();
 let currentTab = 'products';
 
 async function performSearch() {
-    // await searchProducts();
-    // await searchArticles();
+    let query = document.getElementById('search-query').value.trim();
+    if (query === "") {
+        alert("請輸入查詢關鍵詞！");
+        return; 
+    }
     searchProducts();
     searchArticles();
 }
@@ -52,7 +55,13 @@ async function searchProducts() {
 
 function scrollToProductList() {
     let productList = document.getElementById('product-list');
-    productList.scrollIntoView({ behavior: 'smooth' });
+    let elementTopPosition = productList.getBoundingClientRect().top + window.scrollY;
+    let offset = 1;
+    let navBarHeight = 60;
+    window.scrollTo({
+        top: elementTopPosition + offset - navBarHeight,
+        behavior: 'smooth'
+    });
 }
 
 async function loadProducts() {

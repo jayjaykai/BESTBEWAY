@@ -7,8 +7,8 @@ services:
       - TZ=Asia/Taipei
     container_name: fastapi_app
     # shm_size: '1gb'
-    ports:
-      - "8080:8080"
+    # ports:
+    #   - "8080:8080"
     depends_on:
       - redis
       - elasticsearch
