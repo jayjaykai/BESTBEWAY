@@ -49,12 +49,14 @@ async function searchProducts() {
 
     query = document.getElementById('search-query').value;
     console.log('Search Query:', query);
+    document.getElementById("loading-overlay").style.display = "block";
     await loadProducts();
     // scrollToProductList();
 
     if (currentTab === 'products') 
     {
         scrollToItemList(document.getElementById('product-list'));
+        document.getElementById("loading-overlay").style.display = "none";
     } 
 }
 
@@ -62,7 +64,6 @@ async function loadProducts() {
     if (loading || allDataLoaded) return;
     loading = true;
     let productList = document.getElementById('product-list');
-    document.getElementById("loading-overlay").style.display = "block";
 
     try {
         console.log("Loading products from:", from);
@@ -73,13 +74,11 @@ async function loadProducts() {
         if (!Array.isArray(data) || data.length === 0) {
             allDataLoaded = true;
             loading = false;
-            document.getElementById("loading-overlay").style.display = "none";
             return;
         }
 
         from += pageSize;
         currentPage += 1;
-        document.getElementById("loading-overlay").style.display = "none";
 
         let newItemsAdded = false;
         data.forEach(item => {
@@ -192,18 +191,17 @@ async function searchArticles() {
         }
 
         let { search_results, recommended_items } = await response.json();
-        displayArticles(search_results);
-        displayRecommendedItems(recommended_items);
+        await displayArticles(search_results);
+        await displayRecommendedItems(recommended_items);
 
         if (currentTab === 'articles') {
             scrollToItemList(document.getElementById('article-product'));
+            document.getElementById("loading-overlay").style.display = "none";
         }
     } catch (error) {
         console.error("Failed to fetch articles:", error);
         articleList.innerHTML = "<p>Error loading articles.</p>";
-    } finally {
-        document.getElementById("loading-overlay").style.display = "none";
-    }
+    } 
 }
 
 
@@ -220,7 +218,7 @@ function scrollToItemList(item) {
     });
 }
 
-function displayArticles(articles) {
+async function displayArticles(articles) {
     let articleList = document.getElementById("article-list");
     articleList.innerHTML = "";
     console.log(articles);
@@ -260,7 +258,7 @@ function displayArticles(articles) {
 }
 
 
-function displayRecommendedItems(recommendedItems) {
+async function displayRecommendedItems(recommendedItems) {
     let recommendedList = document.getElementById("article-product");
     recommendedList.innerHTML = "推薦商品： ";
 
