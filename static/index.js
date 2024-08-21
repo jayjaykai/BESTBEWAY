@@ -285,7 +285,7 @@ async function displayRecommendedItems(recommendedItems) {
     });
 }
 
-window.addEventListener('scroll', () => {
+window.addEventListener('scroll', async() => {
     query = document.getElementById('search-query').value;
     if (query) {
         let element = document.getElementById('product-list');
@@ -293,7 +293,9 @@ window.addEventListener('scroll', () => {
             let rect = element.getBoundingClientRect();
             if (Math.floor(rect.bottom) <= window.innerHeight && !loading && !allDataLoaded && currentPage < maxPages) {
                 console.log("loading!!!");
-                loadProducts();
+                document.getElementById("loading-overlay").style.display = "block";
+                await loadProducts();
+                document.getElementById("loading-overlay").style.display = "none";
             }
         }
     }
