@@ -4,13 +4,10 @@ import json
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import httpx
-from elasticsearch import Elasticsearch, exceptions
 from pydantic import BaseModel
 from typing import List
 import os
 from dotenv import load_dotenv, set_key
-import asyncio
 from google_shopping import search_products
 from model.elasticsearch_client import get_elasticsearch_client
 from model.mysql import get_session, get_articles_by_query, save_articles, initialize_database, close_database, Article
@@ -38,14 +35,14 @@ queries_list = [
 ]
 
 print("queries_list: ", queries_list)
+print(f"APScheduler Start in every {os.getenv('SCHEDULE_DAY')}")
 print(f"APScheduler Start at {os.getenv('SCHEDULE_STARTHOUR')}:{os.getenv('SCHEDULE_STARTMIN')}")
 print(f"APScheduler Jobs between every {os.getenv('SCHEDULE_BETWEENHOUR') } hour(s)")
 
 # Schedule the tasks
 for i, queries in enumerate(queries_list):
     set_key('.env', 'QUERIES_GROUP_6', "")
-    # scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=i+23, minute=10, args=[queries])
-    scheduler.add_job(update_data, 'cron', day_of_week="mon-sun", hour=(int(os.getenv("SCHEDULE_STARTHOUR")) + int(os.getenv("SCHEDULE_BETWEENHOUR"))*i) % 24, minute=int(os.getenv("SCHEDULE_STARTMIN")), args=[queries])
+    scheduler.add_job(update_data, 'cron', day_of_week=os.getenv("SCHEDULE_DAY"), hour=(int(os.getenv("SCHEDULE_STARTHOUR")) + int(os.getenv("SCHEDULE_BETWEENHOUR"))*i) % 24, minute=int(os.getenv("SCHEDULE_STARTMIN")), args=[queries])
 
 scheduler.start()
 @app.on_event("startup")
@@ -88,33 +85,45 @@ async def search(query: str, start: int = 1, pages: int = 1):
         print("Get data from MySQL DB...")
         db_articles = get_articles_by_query(session, query)
         if db_articles:
-            results = [SearchResult(title=article.title, link=article.link, snippet=article.snippet) for article in db_articles]
-            recommended_items = db_articles[0].recommended_items.split(",") if db_articles else []
+            results = []
+            for article in db_articles:
+                result = SearchResult(
+                    title=article['title'],
+                    link=article['link'],
+                    snippet=article['snippet']
+                )
+                results.append(result)
+
+            recommended_items = db_articles[0]['recommended_items'].split(",") if db_articles else []
             if Cache.is_redis_available():    
                 print("Write Redis article Cache!")
-                Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
+                Cache.redis_client.set(
+                    cache_key, 
+                    json.dumps({
+                        "search_results": [result.dict() for result in results], 
+                        "recommended_items": recommended_items
+                    }), 
+                    ex=600
+                )
         else:
             results, recommended_items = await search_articles(query, start, pages)
-             # 使用執行緒來非同步執行 save_articles
+            # 使用執行緒來非同步執行 save_articles
             executor.submit(save_articles, session, results, query, recommended_items)
-            # save_articles(session, results, query, recommended_items)
             print("Write Redis article Cache!")
-            Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
+            Cache.redis_client.set(
+                cache_key, 
+                json.dumps({
+                    "search_results": [result.dict() for result in results], 
+                    "recommended_items": recommended_items
+                }), 
+                ex=600
+            )
         print("Return data!")
         return SearchResponse(search_results=results, recommended_items=recommended_items)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-# @app.get("/api/product", response_model=List[ProdSearchResult])
-# async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0, max_pages: int = 0):
-#     try:      
-#         search_results = await search_products(query, from_=from_, size=size, current_page=current_page, max_pages=max_pages)
-#         print("search_results: ", search_results)
-#         return search_results
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/product", response_model=List[ProdSearchResult])
 async def search_product(query: str, from_: int = 0, size: int = 50, current_page: int = 0, max_pages: int = 0):
