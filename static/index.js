@@ -62,11 +62,7 @@ async function loadProducts() {
     if (loading || allDataLoaded) return;
     loading = true;
     let productList = document.getElementById('product-list');
-
-    let loadingElement = document.createElement('div');
-    loadingElement.id = 'loading';
-    loadingElement.textContent = 'Loading...';
-    productList.appendChild(loadingElement);
+    document.getElementById("loading-overlay").style.display = "block";
 
     try {
         console.log("Loading products from:", from);
@@ -77,13 +73,13 @@ async function loadProducts() {
         if (!Array.isArray(data) || data.length === 0) {
             allDataLoaded = true;
             loading = false;
-            productList.removeChild(loadingElement);
+            document.getElementById("loading-overlay").style.display = "none";
             return;
         }
 
         from += pageSize;
         currentPage += 1;
-        productList.removeChild(loadingElement);
+        document.getElementById("loading-overlay").style.display = "none";
 
         let newItemsAdded = false;
         data.forEach(item => {
@@ -179,27 +175,38 @@ async function searchArticles() {
     let url = `/api/article?query=${encodeURIComponent(query)}&pages=${maxSearchPage}`;
 
     let articleList = document.getElementById("article-list");
-    articleList.innerHTML = "<p>Loading...</p>";
-
     let recommendedList = document.getElementById("article-product");
+
+    document.getElementById("loading-overlay").style.display = "block";
+
+    articleList.innerHTML = "";
     recommendedList.innerHTML = "";
 
-    let response = await fetch(url);
+    try {
+        let response = await fetch(url);
 
-    if (!response.ok) {
-        console.error("Search API request failed");
+        if (!response.ok) {
+            console.error("Search API request failed");
+            articleList.innerHTML = "<p>Error loading articles.</p>";
+            return;
+        }
+
+        let { search_results, recommended_items } = await response.json();
+        displayArticles(search_results);
+        displayRecommendedItems(recommended_items);
+
+        if (currentTab === 'articles') {
+            scrollToItemList(document.getElementById('article-product'));
+        }
+    } catch (error) {
+        console.error("Failed to fetch articles:", error);
         articleList.innerHTML = "<p>Error loading articles.</p>";
-        return;
-    }
-
-    let { search_results, recommended_items } = await response.json();
-    displayArticles(search_results);
-    displayRecommendedItems(recommended_items);
-
-    if (currentTab === 'articles') {
-        scrollToItemList(document.getElementById('article-product'));
+    } finally {
+        document.getElementById("loading-overlay").style.display = "none";
     }
 }
+
+
 
 function scrollToItemList(item) {
     let itemList = item;
