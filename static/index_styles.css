@@ -101,6 +101,7 @@ html{
 
 .search-container__area {
     flex-direction: row;
+    position: relative;
 }
 
 .search-container__main-title {
@@ -140,6 +141,36 @@ html{
     color: #fff;
     cursor: pointer;
     border-radius: 4px;
+}
+
+.suggestions {
+    position: absolute;
+    top: 60px;
+    left: 20px;
+    width: 300px;
+    text-align: left;
+    border: 2px solid #333;
+    background-color: white;
+    z-index: 1000;
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.5);
+    max-height: 200px;
+    overflow-y: auto; /* 如果列表超過最大高度，顯示滾動條 */
+    display: none;
+    border-radius: 5px;
+}
+
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.suggestions.visible {
+    display: block; /* 當有建議時顯示列表 */
 }
 
 .tabs {
@@ -306,15 +337,6 @@ html{
     margin: 0 auto;
     padding: 10px;
 }
-
-/* article-common */
-/* .article-common__title {
-    font-size: 24px;
-    font-weight: bold;
-    color:#008080;
-    margin-bottom: 10px;
-    text-align: center;
-} */
 
 .article-common {
     margin: 10px 0;

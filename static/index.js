@@ -285,6 +285,50 @@ async function displayRecommendedItems(recommendedItems) {
     });
 }
 
+async function handleSearchInput() {
+    const query = document.getElementById('search-query').value;
+    
+    const suggestionsDiv = document.getElementById('suggestions');
+    
+    if (query.length === 0) {
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.classList.remove('visible');
+        return;
+    }
+
+    let response = await fetch(`/api/search_suggestions?query=${query}`);
+    let suggestions = await response.json();
+
+    suggestionsDiv.innerHTML = '';
+
+    if (Array.isArray(suggestions) && suggestions.length > 0) {
+        suggestions.forEach(suggestion => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = suggestion;
+            suggestionsDiv.appendChild(div);
+
+            div.addEventListener('click', () => {
+                document.getElementById('search-query').value = suggestion;
+                suggestionsDiv.innerHTML = '';
+                suggestionsDiv.classList.remove('visible');
+            });
+        });
+        suggestionsDiv.classList.add('visible');
+    } else {
+        suggestionsDiv.classList.remove('visible');
+    }
+}
+
+document.addEventListener('click', function(event) {
+    let searchInput = document.getElementById('search-query');
+    let suggestionsDiv = document.getElementById('suggestions');
+
+    if (!searchInput.contains(event.target) && !suggestionsDiv.contains(event.target)) {
+        suggestionsDiv.classList.remove('visible');
+    }
+});
+
 window.addEventListener('scroll', async() => {
     query = document.getElementById('search-query').value;
     if (query) {

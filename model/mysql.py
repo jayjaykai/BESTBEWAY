@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint
+from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, func, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy import ForeignKey
@@ -16,6 +16,7 @@ class ArticlesRecommendedItems(Base):
     __tablename__ = "articles_recommended_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    query = Column(String(255))
     recommended_items = Column(String(255), unique=True)  # recommended_items 防重入
 
 class Article(Base):
@@ -107,7 +108,7 @@ def save_articles(db_session: Session, articles: List[SearchResult], query: str,
         recommended_items_entry = db_session.query(ArticlesRecommendedItems).filter_by(recommended_items=recommended_items_str).first()
 
         if not recommended_items_entry:
-            recommended_items_entry = ArticlesRecommendedItems(recommended_items=recommended_items_str)
+            recommended_items_entry = ArticlesRecommendedItems(recommended_items=recommended_items_str,query=query)
             db_session.add(recommended_items_entry)
             db_session.flush()  # submit instead commit，to get id
 
@@ -131,3 +132,15 @@ def save_articles(db_session: Session, articles: List[SearchResult], query: str,
     finally:
         print(f"Saved articles data for query '{query}' into MySQL DB!")
         db_session.close()
+
+def get_suggestions(db_session: Session, query: str):
+    results = db_session.query(
+        ArticlesRecommendedItems.query
+    ).filter(
+        ArticlesRecommendedItems.query.ilike(f"%{query}%")
+    ).all()
+
+    suggestions = []
+    for r in results:
+        suggestions.append(r.query)
+    return suggestions

@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import json
+import unicodedata
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,7 +11,7 @@ import os
 from dotenv import load_dotenv, set_key
 from google_shopping import search_products
 from model.elasticsearch_client import get_elasticsearch_client
-from model.mysql import get_session, get_articles_by_query, save_articles, initialize_database, close_database, Article
+from model.mysql import get_session, get_articles_by_query, save_articles, get_suggestions, initialize_database, close_database, Article
 from model.cache import Cache
 from google_search_api import search_articles, SearchResult, SearchResponse
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -149,3 +150,95 @@ async def search_product(query: str, from_: int = 0, size: int = 50, current_pag
     except Exception as e:
         print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+     
+# @app.get("/api/search_suggestions", response_model=List[str])
+# async def search_suggestions(query: str = Query(...)):
+#     # 根據查詢字串篩選建議
+#     session = get_session()
+#     try:
+#         cache_key = f"suggestionsCache#{query}"
+        
+#         if Cache.redis_client:
+#             cached_result = Cache.redis_client.get(cache_key)
+#             if cached_result:
+#                 print(f"Use suggestionsCache {query} Cache!")
+#                 return cached_result.split(',')
+            
+#         print("Get suggestions from MySQL DB...")
+#         suggestions = get_suggestions(session, query)
+#         filtered_suggestions = []
+#         for s in suggestions:
+#             if query in s:
+#                 filtered_suggestions.append(s)
+
+#         if Cache.redis_client:
+#             print("Write Suggestions Cache!")
+#             Cache.redis_client.set(cache_key, ','.join(suggestions), ex=604800)
+#     except HTTPException as e:
+#         raise e
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+    
+#     return filtered_suggestions
+
+def remove_zhuyin_symbols(query: str) -> str:
+    # 移除所有注音符號（Unicode 範圍 0x3100-0x312F 和 0x31A0-0x31BF）
+    normalized_query = unicodedata.normalize('NFKD', query)
+    cleaned_query = ''.join(
+        c for c in normalized_query if not (
+            0x3100 <= ord(c) <= 0x312F or 
+            0x31A0 <= ord(c) <= 0x31BF or 
+            unicodedata.combining(c)
+        )
+    )
+    return cleaned_query
+
+def normalize_query(query: str) -> str:
+    # 移除注音符號，將字串換成小寫，移除所有非字母數字
+    cleaned_query = remove_zhuyin_symbols(query)
+    # 保留字母和数字
+    cleaned_query = ''.join(c for c in cleaned_query if c.isalnum())
+    cleaned_query = cleaned_query.lower()
+    print(f"Normalized Query: '{cleaned_query}'")
+    return cleaned_query
+
+@app.get("/api/search_suggestions", response_model=List[str])
+async def search_suggestions(query: str = Query(...)):
+    session = get_session()
+    try:
+        normalized_query = normalize_query(query)
+        # 如果 normalized_query 是空字串，返回空陣列
+        if not normalized_query:
+            print("Normalized Query is empty, skipping MySQL query.")
+            return []
+        
+        cache_key = f"suggestionsCache#{normalized_query}"
+
+        print(f"Cache Key: {cache_key}")  # 印出 cache key value
+
+        if Cache.redis_client:
+            cached_result = Cache.redis_client.get(cache_key)
+            if cached_result:
+                # 確認解碼後為字串
+                if isinstance(cached_result, bytes):
+                    cached_result = cached_result.decode('utf-8')
+                print(f"Use suggestionsCache {query} Cache!")
+                return cached_result.split(',')
+
+        print("Get suggestions from MySQL DB...")
+        suggestions = get_suggestions(session, query)
+        filtered_suggestions = []
+        for s in suggestions:
+            if query in s:
+                filtered_suggestions.append(s)
+
+        if Cache.redis_client:
+            print("Write Suggestions Cache!")
+            Cache.redis_client.set(cache_key, ','.join(filtered_suggestions), ex=300)
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return filtered_suggestions

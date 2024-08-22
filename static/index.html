@@ -29,7 +29,8 @@
             <p class="search-container__subtitle">與寶寶一同成長，大人小孩都開心</p>
         </div>
         <div class="search-container__area">
-            <input type="text" class="search-container__input" id="search-query" placeholder="輸入查詢關鍵詞">
+            <input type="text" class="search-container__input" id="search-query" oninput="handleSearchInput()" placeholder="輸入查詢關鍵詞">
+            <div class="suggestions" id="suggestions"></div>
             <button class="search-container__button" onclick="performSearch()"></button>
         </div>
     </div>
