@@ -30,56 +30,6 @@ def ensure_es_client_initialized():
 # es_username = os.getenv("ELASTICSEARCH_USERNAME")
 # es_password = os.getenv("ELASTICSEARCH_PASSWORD")
 
-# es_url = f"http://{es_host}:{es_port}/"
-# print("ES_URL: ", es_url)
-# print("username: ", es_username)
-# print("password: ", es_password)
-
-# try:
-#     es = Elasticsearch(
-#         [es_url],
-#         basic_auth=(es_username, es_password) if es_username and es_password else None
-#     )
-#     if not es.ping():
-#         raise exceptions.ConnectionError("Elasticsearch server is not reachable")
-#     print("Successfully connected to Elasticsearch")
-
-#     # 檢查並建立 products 索引
-#     index_name = "products"
-#     if not es.indices.exists(index=index_name):
-#         es.indices.create(index=index_name)
-#         print(f"Index '{index_name}' created successfully.")
-#     else:
-#         print(f"Index '{index_name}' already exists.")
-# except exceptions.ConnectionError as e:
-#     print(f"Error connecting to Elasticsearch: {e}")
-# except Exception as e:
-#     print(f"Unexpected error: {e}")
-
-# index_name = "products"
-# try:
-#     # 測試删除索引
-#     # es.indices.delete(index=index_name, ignore=[400, 404])
-#     # print("Testing and deleting data at first!")
-#     if not es.indices.exists(index=index_name):
-#         es.indices.create(index=index_name, body={
-#             "mappings": {
-#                 "properties": {
-#                     "query": {"type": "text"},
-#                     "title": {"type": "text"},
-#                     "link": {"type": "text"},
-#                     "price": {"type": "text"},
-#                     "seller": {"type": "text"},
-#                     "image": {"type": "text"},
-#                     "timestamp": {"type": "date"}
-#                 }
-#             }
-#         })
-# except exceptions.ConnectionError as e:
-#     print(f"Error connecting to Elasticsearch: {e}")
-# except exceptions.RequestError as e:
-#     print(f"Error creating index: {e}")
-
 class Generator:
     @staticmethod
     def striphtml(data):
@@ -164,33 +114,6 @@ def calculate_matching_rate(query, title):
     
     return matching_rate
 
-# async def fetch_content(url, headers):
-#     browser = await launch(
-#         headless=True, 
-#         executablePath=os.getenv("PYPPETEER_EXECUTABLE_PATH"),
-#         args=['--no-sandbox', 
-#               '--disable-setuid-sandbox', 
-#               '--disable-dev-shm-usage', 
-#               '--window-position=-10000,-10000',
-#               '--window-size=1,1'
-#             ],
-#         ignoreHTTPSErrors=True
-#     )
-#     # print(os.getenv("PYPPETEER_EXECUTABLE_PATH"))
-#     page = await browser.newPage()
-#     await page.setUserAgent(headers['User-Agent'])
-#     # 模擬人為操作
-#     await page.evaluateOnNewDocument('''() => {
-#         Object.defineProperty(navigator, 'webdriver', {
-#             get: () => false,
-#         });
-#     }''')
-
-#     await page.goto(url, {'waitUntil': 'networkidle2'})
-#     content = await page.content()
-#     await browser.close()
-#     return content
-
 def fetch_content(url, headers):
     try:
         chrome_options = Options()
@@ -245,16 +168,43 @@ async def search_es_products(query, from_=0, size=50):
         
         es_response = es.search(index=index_name, body={
             "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["title", "query"],
-                    "type": "phrase"
+                "function_score": {
+                    "query": {
+                        "multi_match": {
+                            "query": query,
+                            "fields": ["title", "query"],
+                            "type": "phrase"
+                        }
+                    },
+                    "script_score": {
+                        "script": {
+                            "source": """
+                                // 使用 doc['title'] 來獲取每個文檔的 title 字段
+                                String title = doc['title'].value;
+                                double score = 0;
+
+                                // 計算 title 的前 N 個字母的相似度
+                                int N = 10; 
+                                if (title.length() > N) {
+                                    title = title.substring(0, N);
+                                }
+
+                                // 計算每個字符的ASCII值總和作為相似度分數
+                                for (int i = 0; i < title.length(); i++) {
+                                    score += title.charAt(i);
+                                }
+
+                                return score;
+                            """
+                        }
+                    },
+                    "boost_mode": "replace"
                 }
             },
-            "sort": [{"timestamp": {"order": "asc"}}],
             "size": size,
             "from": from_
         })
+
         if es_response['hits']['hits']:
             hits = es_response['hits']['hits']
             for hit in hits:

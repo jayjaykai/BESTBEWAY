@@ -204,8 +204,6 @@ async function searchArticles() {
     } 
 }
 
-
-
 function scrollToItemList(item) {
     let itemList = item;
     let elementTopPosition = itemList.getBoundingClientRect().top + window.scrollY;

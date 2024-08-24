@@ -151,36 +151,6 @@ async def search_product(query: str, from_: int = 0, size: int = 50, current_pag
         print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
      
-# @app.get("/api/search_suggestions", response_model=List[str])
-# async def search_suggestions(query: str = Query(...)):
-#     # 根據查詢字串篩選建議
-#     session = get_session()
-#     try:
-#         cache_key = f"suggestionsCache#{query}"
-        
-#         if Cache.redis_client:
-#             cached_result = Cache.redis_client.get(cache_key)
-#             if cached_result:
-#                 print(f"Use suggestionsCache {query} Cache!")
-#                 return cached_result.split(',')
-            
-#         print("Get suggestions from MySQL DB...")
-#         suggestions = get_suggestions(session, query)
-#         filtered_suggestions = []
-#         for s in suggestions:
-#             if query in s:
-#                 filtered_suggestions.append(s)
-
-#         if Cache.redis_client:
-#             print("Write Suggestions Cache!")
-#             Cache.redis_client.set(cache_key, ','.join(suggestions), ex=604800)
-#     except HTTPException as e:
-#         raise e
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-    
-#     return filtered_suggestions
-
 def remove_zhuyin_symbols(query: str) -> str:
     # 移除所有注音符號（Unicode 範圍 0x3100-0x312F 和 0x31A0-0x31BF）
     normalized_query = unicodedata.normalize('NFKD', query)

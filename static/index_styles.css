@@ -61,7 +61,7 @@ html{
     cursor: pointer;
 }
 
-.nav__profile {
+/* .nav__profile {
     position: relative;
     display: inline-block;
 }
@@ -72,7 +72,7 @@ html{
     border-radius: 50%;
     cursor: pointer;
     display: none;
-}
+} */
 
 .nav__hover-text {
     display: none;
