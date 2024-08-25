@@ -52,10 +52,12 @@ services:
       - 9300:9300
     volumes:
       - es_data:/usr/share/elasticsearch/data
+      - ./init_elasticsearch.sh:/usr/share/elasticsearch/init_elasticsearch.sh # 加入 "fielddata": true
     env_file:
       - .env
     networks:
       - bestbeway_network
+    command: /bin/bash -c "/usr/local/bin/docker-entrypoint.sh; sleep 20; /usr/share/elasticsearch/init_elasticsearch.sh"
 
   redis:
     image: "redis:alpine"
