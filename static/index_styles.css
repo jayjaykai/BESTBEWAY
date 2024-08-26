@@ -479,3 +479,28 @@ html{
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.scroll-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: #f69ed2;
+    border: none;
+    cursor: pointer;
+    font-size: 30px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.scroll-button--back-to-top {
+    display: flex;
+}
+
+.scroll-button--back-to-top:hover {
+    background-color: #c50498;
+}

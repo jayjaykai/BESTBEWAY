@@ -363,5 +363,20 @@ document.addEventListener('DOMContentLoaded', (event) => {
     });
 });
 
+// 監聽滾動事件
+window.addEventListener('scroll', function() {
+    var backToTopButton = document.getElementById('button-back-to-top');
+    if (window.scrollY > 340) {
+        backToTopButton.style.display = 'flex';
+    } else {
+        backToTopButton.style.display = 'none';
+    }
+});
+
+// 點擊按鈕返回頂部
+document.getElementById('button-back-to-top').addEventListener('click', function() {
+    window.scrollTo({ top: 340, behavior: 'smooth' });
+});
+
 searchCommonArticles();
 showTab('products');
