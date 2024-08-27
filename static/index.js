@@ -4,6 +4,7 @@ let from = 0;
 let currentPage = 0;
 let loading = false;
 let allDataLoaded = false;
+let isArticlesLoading = false;
 let query = '';
 let maxSearchPage = 2;
 const loadedProducts = new Set();
@@ -35,6 +36,13 @@ function showTab(tabId) {
         articlesTab.style.display = 'flex';
         articlesButton.classList.add('tabs__button--active');
         productsButton.classList.remove('tabs__button--active');
+        //如果文章還在搜尋中，一樣呈現lazy loading效果
+        if (isArticlesLoading) {
+            document.getElementById("loading-overlay").style.display = "block";
+        } 
+        else {
+            document.getElementById("loading-overlay").style.display = "none";
+        }
     }
     currentTab = tabId;
 }
@@ -177,6 +185,7 @@ async function searchArticles() {
     let recommendedList = document.getElementById("article-product");
 
     document.getElementById("loading-overlay").style.display = "block";
+    isArticlesLoading=true;
 
     articleList.innerHTML = "";
     recommendedList.innerHTML = "";
@@ -197,11 +206,17 @@ async function searchArticles() {
         if (currentTab === 'articles') {
             scrollToItemList(document.getElementById('article-product'));
             document.getElementById("loading-overlay").style.display = "none";
+            isArticlesLoading=false;
         }
     } catch (error) {
         console.error("Failed to fetch articles:", error);
         articleList.innerHTML = "<p>Error loading articles.</p>";
-    } 
+    } finally {
+        isArticlesLoading = false;
+        if (currentTab === 'articles') {
+            document.getElementById("loading-overlay").style.display = "none";
+        }
+    }
 }
 
 function scrollToItemList(item) {
