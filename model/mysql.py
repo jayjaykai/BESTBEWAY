@@ -6,7 +6,7 @@ from sqlalchemy import ForeignKey
 from mysql.connector.pooling import MySQLConnectionPool
 from dotenv import load_dotenv
 from typing import Any, List, Dict
-from google_search_api import SearchResult
+from model.google_search_api import SearchResult
 
 load_dotenv()
 
