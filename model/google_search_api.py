@@ -92,7 +92,7 @@ async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> Lis
             fuzzy_results = process.extract(query, all_words, limit=10)
             for result in fuzzy_results:
                 if result[1] >= threshold and len(result[0]) > 1:  # 確保分詞字串長度大於1再做匹配
-                    # print("fuzzy_results: ", result)
+                    print("fuzzy_results: ", result)
                     # print("matched_items add: ", query)
                     matched_items.add(query)
                     break

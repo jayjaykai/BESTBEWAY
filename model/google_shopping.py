@@ -205,11 +205,15 @@ async def search_es_products(query, from_=0, size=50):
             "from": from_
         })
 
+        # if es_response['hits']['hits']:
+        #     hits = es_response['hits']['hits']
+        #     for hit in hits:
+        #         if query in hit["_source"]["title"]:
+        #             items.append(hit["_source"])
         if es_response['hits']['hits']:
             hits = es_response['hits']['hits']
             for hit in hits:
-                if query in hit["_source"]["title"]:
-                    items.append(hit["_source"])
+                items.append(hit["_source"])
 
     except Exception as e:
         print(f"Error searching Elasticsearch: {e}")

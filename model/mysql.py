@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, func, text
+from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, func, text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy import ForeignKey
@@ -28,6 +28,7 @@ class Article(Base):
     title = Column(String(255))
     snippet = Column(Text)
     recommended_items_id = Column(Integer, ForeignKey('articles_recommended_items.id'))
+    created_at = Column(DateTime)
 
     # 加入資料防重入機制
     __table_args__ = (
@@ -144,3 +145,31 @@ def get_suggestions(db_session: Session, query: str):
     for r in results:
         suggestions.append(r.query)
     return suggestions
+
+def delete_7days_articles_data():
+    db_session = get_session()
+    try:
+        # 設定刪除7天前的資料
+        seven_days_ago = func.timestampadd(text('DAY'), -7, func.now())
+        articles_to_delete = db_session.query(Article).filter(Article.created_at < seven_days_ago).all()
+        recommended_items_ids_to_delete = [article.recommended_items_id for article in articles_to_delete if article.recommended_items_id is not None]
+
+        # 刪除 articles 表中的資料
+        result_articles = db_session.query(Article).filter(Article.created_at < seven_days_ago).delete(synchronize_session='fetch')
+
+        # 刪除 articles_recommended_items 表中的資料
+        result_recommended_items = 0
+        if recommended_items_ids_to_delete:
+            result_recommended_items = db_session.query(ArticlesRecommendedItems).filter(
+                ArticlesRecommendedItems.id.in_(recommended_items_ids_to_delete)
+            ).delete(synchronize_session='fetch')
+
+        db_session.commit()
+        print(f"Deleted {result_articles} rows from Articles table.")
+        print(f"Deleted {result_recommended_items} rows from ArticlesRecommendedItems table.")
+
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while deleting data: {e}")
+    finally:
+        db_session.close()
