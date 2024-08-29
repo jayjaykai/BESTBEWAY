@@ -45,21 +45,16 @@ class DBConfig:
 
     def initialize_mysql_pool(self):
         pool_size_str = os.getenv("POOL_SIZE")
-        pool_size = 5 if pool_size_str is None else int(pool_size_str)
+        pool_size = 32 if pool_size_str is None else int(pool_size_str)
 
-        self.pool = MySQLConnectionPool(
-            pool_name="myPool",
+        self.engine = create_engine(
+            f'mysql+mysqlconnector://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST", "localhost")}/{os.getenv("DB_NAME")}',
             pool_size=pool_size,
-            host=os.getenv("DB_HOST", "localhost"),
-            database=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=3306
+            max_overflow=10,
+            pool_pre_ping=True
         )
-
-        self.engine = create_engine(f'mysql+mysqlconnector://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST", "localhost")}/{os.getenv("DB_NAME")}')
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-
+   
     def close_connection_pool(self):
         if self.pool:
             self.pool.close()
@@ -92,7 +87,6 @@ def get_articles_by_query(db_session: Session, query: str) -> List[Dict[str, Any
         Article.query.ilike(f"%{query}%")
     ).all()
 
-    # 將結果轉換為字典，以便更容易使用
     articles = []
     for article, recommended_items in results:
         articles.append({
@@ -152,7 +146,7 @@ def delete_7days_articles_data(retries=3, delay=5):
     for attempt in range(retries):
         db_session = None
         try:
-            db_session = get_session()  # 獲取數據庫連接
+            db_session = get_session()
             if db_session is None:
                 raise OperationalError("Session not available", params=None, orig=None)
 

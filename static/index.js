@@ -25,14 +25,17 @@ function showTab(tabId) {
     let articlesTab = document.getElementById('articles');
     let productsButton = document.getElementById('productsButton');
     let articlesButton = document.getElementById('articlesButton');
+    let hotKeywords = document.getElementById('search-container__hot');
     
     if (tabId === 'products') {
         productsTab.style.display = 'flex';
         articlesTab.style.display = 'none';
+        hotKeywords.style.visibility = 'hidden';
         productsButton.classList.add('tabs__button--active');
         articlesButton.classList.remove('tabs__button--active');
     } else if (tabId === 'articles') {
         productsTab.style.display = 'none';
+        hotKeywords.style.visibility = 'visible';
         articlesTab.style.display = 'flex';
         articlesButton.classList.add('tabs__button--active');
         productsButton.classList.remove('tabs__button--active');
@@ -216,6 +219,7 @@ async function searchArticles() {
         if (currentTab === 'articles') {
             document.getElementById("loading-overlay").style.display = "none";
         }
+        fetchHotKeywords();
     }
 }
 
@@ -237,7 +241,6 @@ async function displayArticles(articles) {
     console.log(articles);
 
     let groupedArticles = Array.from({ length: maxSearchPage*10 }, () => []);
-
     articles.forEach((article, index) => {
         let groupIndex = (index + 1) % (maxSearchPage*10);
         groupedArticles[groupIndex].push(article);
@@ -270,7 +273,6 @@ async function displayArticles(articles) {
     }
 }
 
-
 async function displayRecommendedItems(recommendedItems) {
     let recommendedList = document.getElementById("article-product");
     recommendedList.innerHTML = "推薦商品： ";
@@ -298,39 +300,46 @@ async function displayRecommendedItems(recommendedItems) {
     });
 }
 
+// 減少重複觸發fetch /api/search_suggestions
+let debounceTimer;
 async function handleSearchInput() {
     const query = document.getElementById('search-query').value;
-    
     const suggestionsDiv = document.getElementById('suggestions');
-    
+
     if (query.length === 0) {
         suggestionsDiv.innerHTML = '';
         suggestionsDiv.classList.remove('visible');
         return;
     }
 
-    let response = await fetch(`/api/search_suggestions?query=${query}`);
-    let suggestions = await response.json();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+        try {
+            let response = await fetch(`/api/search_suggestions?query=${query}`);
+            let suggestions = await response.json();
 
-    suggestionsDiv.innerHTML = '';
+            suggestionsDiv.innerHTML = '';
+            if (Array.isArray(suggestions) && suggestions.length > 0) {
+                suggestions.forEach(suggestion => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.textContent = suggestion;
+                    suggestionsDiv.appendChild(div);
 
-    if (Array.isArray(suggestions) && suggestions.length > 0) {
-        suggestions.forEach(suggestion => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.textContent = suggestion;
-            suggestionsDiv.appendChild(div);
-
-            div.addEventListener('click', () => {
-                document.getElementById('search-query').value = suggestion;
-                suggestionsDiv.innerHTML = '';
+                    div.addEventListener('click', () => {
+                        document.getElementById('search-query').value = suggestion;
+                        suggestionsDiv.innerHTML = '';
+                        suggestionsDiv.classList.remove('visible');
+                    });
+                });
+                suggestionsDiv.classList.add('visible');
+            } else {
                 suggestionsDiv.classList.remove('visible');
-            });
-        });
-        suggestionsDiv.classList.add('visible');
-    } else {
-        suggestionsDiv.classList.remove('visible');
-    }
+            }
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+        }
+    }, 300);
 }
 
 document.addEventListener('click', function(event) {
@@ -372,13 +381,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
             event.preventDefault();
             let query = link.getAttribute('data-query');
             document.getElementById('search-query').value = query;
-            searchProducts(query);
-            searchArticles(query);
+            searchProducts();
+            searchArticles();
         });
     });
 });
 
-// 監聽滾動事件
 window.addEventListener('scroll', function() {
     var backToTopButton = document.getElementById('button-back-to-top');
     if (window.scrollY > 340) {
@@ -393,5 +401,42 @@ document.getElementById('button-back-to-top').addEventListener('click', function
     window.scrollTo({ top: 340, behavior: 'smooth' });
 });
 
+////////////////////////////////////// 熱搜關鍵字//////////////////////////////////////////
+async function fetchHotKeywords() {
+    try {
+        const response = await fetch('/api/hot_keywords');
+        if (response.ok) {
+            const data = await response.json();
+            const hotKeywordsContainer = document.getElementById('search-container__hot-content');
+            
+            hotKeywordsContainer.innerHTML = '';
+
+            data.hot_keywords.forEach((item, index) => {
+                const keywordSpan = document.createElement('span');
+                keywordSpan.className = 'hot-keyword';
+                // keywordSpan.innerText = `${item.keyword} (${item.score})`;
+                if (index < data.hot_keywords.length - 1) {
+                    keywordSpan.innerText = `${item.keyword}、`;
+                } else {
+                    keywordSpan.innerText = `${item.keyword}`;
+                }
+                keywordSpan.onclick = () => handleKeywordClick(item.keyword);
+                hotKeywordsContainer.appendChild(keywordSpan);
+            });
+        } else {
+            console.error('Failed to fetch hot keywords:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error fetching hot keywords:', error);
+    }
+}
+//處理點擊熱搜關鍵字
+function handleKeywordClick(keyword) {
+    document.getElementById('search-query').value = keyword;
+    searchArticles();
+}
+////////////////////////////////////// 熱搜關鍵字//////////////////////////////////////////
+
 searchCommonArticles();
+fetchHotKeywords();
 showTab('products');

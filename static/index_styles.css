@@ -90,7 +90,7 @@ html{
     background-size: cover ;
     background-repeat: no-repeat;
     background-position: center;
-    padding: 50px 20px; 
+    padding: 60px 20px; 
 } 
 
 .search-container__slogan, .search-container__area {
@@ -98,7 +98,7 @@ html{
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    margin-bottom: 20px;
+    /* margin-bottom: 20px; */
     display: flex;
     align-items: flex-start;
     flex-direction: column;
@@ -148,6 +148,39 @@ html{
     color: #fff;
     cursor: pointer;
     border-radius: 4px;
+}
+
+.search-container__hot {
+    padding-left: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: left;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.search-container__hot-title {
+    font-size: 18px;
+    font-weight: bold; 
+    color: #333;
+    margin-bottom: 10px; 
+}
+
+#search-container__hot-content {
+    display: inline-block;
+}
+
+.hot-keyword {
+    font-size: 16px; 
+    color: #28f0f0; 
+    cursor: pointer; 
+    margin-right: 8px;
+    transition: color 0.3s ease;
+}
+
+.hot-keyword:hover {
+    font-size: 18px;
+    color: #008080;
 }
 
 .suggestions {

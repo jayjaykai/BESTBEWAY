@@ -13,6 +13,10 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
         cache_key = f"articleCache#{query}_keyword"
         cached_data = Cache.redis_client.get(cache_key) if Cache.is_redis_available() else None
         
+        # 增加關鍵字的熱門度
+        if query!= "寶寶常見問題":
+            Cache.increment_keyword_score(query)
+        
         if cached_data:
             print("Use Redis article Cache!")
             return json.loads(cached_data)
@@ -26,6 +30,8 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
             if Cache.is_redis_available():
                 print("Write Redis article Cache!")
                 Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
+            
+            session.close()
         else:
             results, recommended_items = await search_articles(query, start, pages)
             executor.submit(save_articles, session, results, query, recommended_items)

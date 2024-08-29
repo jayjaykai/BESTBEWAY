@@ -7,7 +7,6 @@ load_dotenv()
 
 class Cache():
     def __init__(self):
-        self.max = 10
         self.redis_client = None
 
     def create_redis_client(self):
@@ -40,29 +39,20 @@ class Cache():
         except redis.ConnectionError:
             self.redis_client = None
             return False 
-        
-    def update_top_searches(self, attraction_id):
-        if self.is_redis_available():
-            new_searches = self.redis_client.lrange("new_searches", 0, -1)
-            attraction_id_str = str(attraction_id)
-            # print(f"Initial new_searches: {new_searches}")
-            
-            if attraction_id_str in new_searches:
-                new_searches.remove(attraction_id_str)
-                # print(f"Removed {attraction_id_str} from new_searches: {new_searches}")
-            
-            # 將當前搜尋的景點 ID 插入到列表的最前面
-            new_searches.insert(0, attraction_id_str)
-            new_searches = new_searches[:self.max]
-            # print(f"new_searches to max {self.max}: {new_searches}")
-            # 更新 Redis 中的列表
-            self.redis_client.delete("new_searches")
-            self.redis_client.rpush("new_searches", *new_searches)
-            # print(f"Updated new_searches in Redis: {new_searches}")
     
-    def get_top_searches(self):
+    def increment_keyword_score(self, keyword):
         if self.is_redis_available():
-            return self.redis_client.lrange("new_searches", 0, self.max-1)
+            # 使用 ZINCRBY 增加關鍵字的熱門度
+            self.redis_client.zincrby('top_keywords', 1, keyword)
+            new_score = self.redis_client.zscore('top_keywords', keyword)
+            print(f"Incremented score for keyword '{keyword}'. New score: {new_score}")
+
+    def get_top_keywords(self, limit=10):
+        if self.is_redis_available():
+            # 獲取前 n 個熱門關鍵字
+            keywords = self.redis_client.zrevrange('top_keywords', 0, limit-1, withscores=True)
+            print(f"Top {limit} keywords with scores: {keywords}")
+            return keywords
         return []
         
 Cache = Cache()

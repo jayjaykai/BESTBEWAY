@@ -49,3 +49,5 @@ def search_suggestions_controller(query: str) -> list:
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
