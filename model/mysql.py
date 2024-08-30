@@ -1,6 +1,6 @@
 import os
 import time
-from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, func, text, DateTime
+from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, desc, func, text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, Session
@@ -9,6 +9,7 @@ from mysql.connector.pooling import MySQLConnectionPool
 from dotenv import load_dotenv
 from typing import Any, List, Dict
 from model.google_search_api import SearchResult
+from model.cache import Cache
 
 load_dotenv()
 
@@ -36,6 +37,14 @@ class Article(Base):
     __table_args__ = (
         UniqueConstraint('query', 'link', name='_query_link_uc'),
     )
+
+class HotKeywords(Base):
+    __tablename__ = "articles_hot_keywords"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keyword = Column(String(255), nullable=False, unique=True)
+    score = Column(Integer, nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 class DBConfig:
     def __init__(self):
@@ -188,3 +197,49 @@ def delete_7days_articles_data(retries=3, delay=5):
 
     else:
         print("Failed to delete data after several attempts.")
+
+def write_hot_keywords_to_redis(keywords_with_scores):
+    try:
+        if keywords_with_scores:
+            print("Writing hot keywords to Redis...")
+            for item in keywords_with_scores:
+                Cache.redis_client.zadd('top_keywords', {item['keyword']: item['score']})
+    except Exception as e:
+        print(f"Error occurred while writing data to Redis: {e}")
+
+def get_hot_keywords_from_db(db_session: Session):
+    try:
+        keywords = db_session.query(HotKeywords).order_by(desc(HotKeywords.score)).limit(10).all()
+        return keywords
+    except Exception as e:
+        print(f"Error occurred while fetching data from RDS: {e}")
+    finally:
+        db_session.close()
+
+def save_hot_keywords_to_db(db_session: Session, keywords_with_scores):
+    try:
+        for item in keywords_with_scores:
+            keyword = item["keyword"]
+            score = item["score"]
+
+            # 檢查是否已存在該關鍵字
+            existing_entry = db_session.query(HotKeywords).filter_by(keyword=keyword).first()
+
+            if existing_entry:
+                # 更新已有的關鍵字分數
+                existing_entry.score = score
+            else:
+                # 插入新關鍵字及其分數
+                new_entry = HotKeywords(keyword=keyword, score=score)
+                db_session.add(new_entry)
+
+        db_session.commit()
+        return True
+
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while saving data: {e}")
+        return False
+
+    finally:
+        db_session.close()

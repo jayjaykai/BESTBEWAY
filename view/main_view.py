@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from controller.article_controller import search_articles_controller
 from controller.product_controller import ProdSearchResult, search_product_controller
 from controller.suggestions_controller import search_suggestions_controller
-from controller.hot_keywords_controller import get_hot_keywords_controller
+from controller.hot_keywords_controller import get_hot_keywords_controller, save_hot_keywords_controller
 from model.google_search_api import SearchResponse
 from pydantic import BaseModel
 from typing import List
@@ -42,4 +42,8 @@ def search_suggestions(query: str = Query(...)):
 
 @app.get("/api/hot_keywords")
 async def get_hot_keywords():
-    return await get_hot_keywords_controller()
+    try:
+        # await save_hot_keywords_controller()
+        return await get_hot_keywords_controller()
+    except HTTPException as e:
+        raise e
