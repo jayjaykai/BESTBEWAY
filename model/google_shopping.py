@@ -184,7 +184,7 @@ async def search_es_products(query, from_=0, size=50):
                                 double score = 0;
 
                                 // 計算 title 的前 N 個字母的相似度
-                                int N = 10; 
+                                int N = 15; 
                                 if (title.length() > N) {
                                     title = title.substring(0, N);
                                 }

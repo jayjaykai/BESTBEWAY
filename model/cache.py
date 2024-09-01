@@ -42,14 +42,14 @@ class Cache():
     
     def increment_keyword_score(self, keyword):
         if self.is_redis_available():
-            # 使用 ZINCRBY 增加關鍵字的熱門度
+            # 使用 ZINCRBY 增加關鍵字的熱搜數
             self.redis_client.zincrby('top_keywords', 1, keyword)
             new_score = self.redis_client.zscore('top_keywords', keyword)
             print(f"Incremented score for keyword '{keyword}'. New score: {new_score}")
 
     def get_top_keywords(self, limit=10):
         if self.is_redis_available():
-            # 獲取前 n 個熱門關鍵字
+            # 取得前10筆熱搜關鍵字
             keywords = self.redis_client.zrevrange('top_keywords', 0, limit-1, withscores=True)
             print(f"Top {limit} keywords with scores: {keywords}")
             return keywords

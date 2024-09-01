@@ -547,3 +547,46 @@ html{
 .scroll-button--back-to-top:hover {
     background-color: #c50498;
 }
+
+@media (max-width: 1200px) and (min-width: 601px) {
+    .row {
+        display:inline;
+    }
+    .row img {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    .category {
+        font-size: 24px;
+    }
+    .category:hover {
+        font-size: 28px;
+    }
+    .product-list__item {
+        width: calc(50% - 20px);
+    }
+}
+
+@media (max-width: 600px) {
+    .row {
+        display:inline;
+        flex: 1 1 calc(100% - 20px);
+        text-align: center;
+    }
+    .row img {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    .category {
+        font-size: 36px;
+    }
+    .category:hover {
+        font-size: 40px;
+    }    
+    .product-list__item {
+        width: calc(100% - 20px);
+    }
+    .article-list__item a:hover {
+        font-size: 16px;
+    }
+}
