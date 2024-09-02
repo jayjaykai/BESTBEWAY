@@ -16,20 +16,6 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Cache Docker layers
-      uses: actions/cache@v3
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
     - name: Install Docker Compose
       run: |
         curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
@@ -40,9 +26,9 @@ jobs:
       run: docker-compose up -d --build
 
     - name: Wait for services to be ready
-      run: sleep 30  # 等待服務啟動完成
+      run: sleep 30
 
-    - name: Run tests
+    - name: Run pytest
       run: docker-compose exec web pytest /app/function_test.py
 
     - name: Shut down and clean up
@@ -56,7 +42,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v3
 
-    - name: Copy files to EC2
+    - name: Prepare SSH Key and Deploy
       env:
         EC2_HOST: ${{ secrets.EC2_HOST }}
         EC2_USER: ${{ secrets.EC2_USER }}
@@ -64,21 +50,14 @@ jobs:
       run: |
         echo "${EC2_KEY}" > key.pem
         chmod 600 key.pem
+
         scp -i key.pem -o StrictHostKeyChecking=no -r * $EC2_USER@$EC2_HOST:/home/ubuntu/BESTBEWAY
 
-    - name: Deploy on EC2
-      env:
-        EC2_HOST: ${{ secrets.EC2_HOST }}
-        EC2_USER: ${{ secrets.EC2_USER }}
-        EC2_KEY: ${{ secrets.EC2_KEY }}
-      run: |
-        echo "${EC2_KEY}" > key.pem
-        chmod 600 key.pem
         ssh -i key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
           cd /home/ubuntu/BESTBEWAY
           docker-compose down
 
-          # 查找並移除舊的 bestbeway-web image
+          #移除舊的 bestbeway-web image
           docker images -q bestbeway-web | xargs --no-run-if-empty docker rmi
 
           docker-compose up -d --build
