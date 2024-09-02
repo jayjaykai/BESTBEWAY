@@ -42,6 +42,14 @@ async def fetch_all_results(api_key: str, query: str, start: int, num_pages: int
     items = [item for sublist in results for item in sublist]
     return items
 
+def generate_combined_text(snippet: str, htmlSnippet: str, og_description: str) -> str:
+    """
+    Combines snippet, htmlSnippet, and og_description into a single string.
+    Returns:
+        str: The combined text.
+    """
+    return f"{snippet} {htmlSnippet} {og_description}"
+
 async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> List[SearchResult]:
     print("Get data from Google API...")
     api_key = os.getenv("GOOGLE_API_KEY")
@@ -65,7 +73,7 @@ async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> Lis
             if metatags:
                 og_description = metatags[0].get("og:description", "")
         
-        combined_text = f"{snippet} {htmlSnippet} {og_description}" # {htmlSnippet} {og_description}
+        combined_text = generate_combined_text(snippet, htmlSnippet, og_description)
         words = jieba.lcut(combined_text)  # 將每頁的字串資料做分詞
         all_words.extend(words)
 
