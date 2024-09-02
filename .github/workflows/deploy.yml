@@ -16,7 +16,7 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v3
 
-    - name: Run tests
+    - name: Run pytests
       run: |
         python3 -m pip install -r requirements.txt
         pytest function_test.py

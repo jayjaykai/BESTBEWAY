@@ -1,5 +1,13 @@
-from model.google_search_api import generate_combined_text
 from model.getdataintoES import split_basic_words
+
+
+def generate_combined_text(snippet: str, htmlSnippet: str, og_description: str) -> str:
+    """
+    Combines snippet, htmlSnippet, and og_description into a single string.
+    Returns:
+        str: The combined text.
+    """
+    return f"{snippet} {htmlSnippet} {og_description}"
 
 def test_split_basic_words():
     input_string = "防脹氣奶瓶"

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import jieba
 from fuzzywuzzy import process
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from function_test import generate_combined_text
 
 load_dotenv()
 
@@ -41,14 +42,6 @@ async def fetch_all_results(api_key: str, query: str, start: int, num_pages: int
         results = await asyncio.gather(*tasks)
     items = [item for sublist in results for item in sublist]
     return items
-
-def generate_combined_text(snippet: str, htmlSnippet: str, og_description: str) -> str:
-    """
-    Combines snippet, htmlSnippet, and og_description into a single string.
-    Returns:
-        str: The combined text.
-    """
-    return f"{snippet} {htmlSnippet} {og_description}"
 
 async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> List[SearchResult]:
     print("Get data from Google API...")
