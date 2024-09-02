@@ -16,23 +16,10 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v3
 
-    - name: Install Docker Compose
+    - name: Run tests
       run: |
-        curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        chmod +x /usr/local/bin/docker-compose
-        docker-compose version
-
-    - name: Build and run Docker Compose
-      run: docker-compose up -d --build
-
-    - name: Wait for services to be ready
-      run: sleep 30
-
-    - name: Run pytest
-      run: docker-compose exec web pytest /app/function_test.py
-
-    - name: Shut down and clean up
-      run: docker-compose down
+        python3 -m pip install -r requirements.txt
+        pytest function_test.py
 
   deploy:
     runs-on: ubuntu-latest
@@ -57,7 +44,7 @@ jobs:
           cd /home/ubuntu/BESTBEWAY
           docker-compose down
 
-          #移除舊的 bestbeway-web image
+          # 移除舊的 bestbeway-web image
           docker images -q bestbeway-web | xargs --no-run-if-empty docker rmi
 
           docker-compose up -d --build

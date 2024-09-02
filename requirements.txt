@@ -16,4 +16,5 @@ selenium==4.4.3
 jieba==0.42.1
 fuzzywuzzy==0.18.0
 APScheduler==3.9.1
+pytest
 
