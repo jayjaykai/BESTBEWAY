@@ -41,7 +41,9 @@ jobs:
         ssh -i key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
           cd /home/ubuntu/BESTBEWAY
 
-          git pull origin develop
+          # 強制 pull github 的分支
+          git fetch origin
+          git reset --hard origin/develop
 
           docker-compose down
 
