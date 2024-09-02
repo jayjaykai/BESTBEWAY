@@ -38,10 +38,11 @@ jobs:
         echo "${EC2_KEY}" > key.pem
         chmod 600 key.pem
 
-        scp -i key.pem -o StrictHostKeyChecking=no -r * $EC2_USER@$EC2_HOST:/home/ubuntu/BESTBEWAY
-
         ssh -i key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
           cd /home/ubuntu/BESTBEWAY
+
+          git pull origin develop
+
           docker-compose down
 
           # 移除舊的 bestbeway-web image
