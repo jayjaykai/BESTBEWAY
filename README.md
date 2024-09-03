@@ -30,6 +30,12 @@ https://bestbeway.tdt-tw.online/
 
 [database]: ./readme/database.png
 
+### APIs
+
+![][APIs]
+
+[APIs]: ./readme/APIs.png
+
 ### CI/CD
 
 ![][CICD]
