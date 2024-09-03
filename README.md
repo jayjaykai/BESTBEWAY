@@ -2,7 +2,7 @@
 
 > 為搜尋育兒資訊相關文章和推薦商品，快速取得文章資訊，從文章中取得相關推薦商品。
 - Set up a **CI/CD** pipeline using **GitHub Actions** to automatically run **unit test** with **PyTest**.
-- Utilize **Elasticsearch** and **RDS(MySQL)** as databases, with weekly data updates managed by **APScheduler**.
+- Utilize **Elasticsearch** and **RDS(MySQL)** as databases, with weekly and daily data updates managed by **APScheduler**.
 - Implement caching with **Redis** and use **threads** to fetch various data concurrently.
 - Configure **NGINX** as a reverse proxy and secure connections using an **SSL** Certificate.
 - Employ **Selenium** and **BeautifulSoup** for web scraping, and integrate with **Google Cloud API** to retrieve data.
