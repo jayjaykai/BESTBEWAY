@@ -22,11 +22,11 @@ queries_list = [
 ]
 
 print("queries_list: ", queries_list)
-print(f"APScheduler for crawling product data Starts in every {os.getenv('SCHEDULE_DAY')}")
-print(f"APScheduler for crawling product data Starts at {os.getenv('SCHEDULE_STARTHOUR')}:{os.getenv('SCHEDULE_STARTMIN')}")
-print(f"APScheduler for crawling product data Jobs between every {os.getenv('SCHEDULE_BETWEENHOUR') } hour(s)")
-print(f"APScheduler Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
-print(f"APScheduler Updating Hotkey Job Start at {os.getenv('UPDATE_HOTKEY_SCHEDULE_HOUR')}:{os.getenv('UPDATE_HOTKEY_SCHEDULE_MINUTE')}")
+print(f"APScheduler_1 for crawling product data Starts in every {os.getenv('SCHEDULE_DAY')}")
+print(f"APScheduler_1 for crawling product data Starts at {os.getenv('SCHEDULE_STARTHOUR')}:{os.getenv('SCHEDULE_STARTMIN')}")
+print(f"APScheduler_1 for crawling product data Jobs between every {os.getenv('SCHEDULE_BETWEENHOUR') } hour(s)")
+print(f"APScheduler_2 Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
+print(f"APScheduler_3 Updating Hotkey Job Start at {os.getenv('UPDATE_HOTKEY_SCHEDULE_HOUR')}:{os.getenv('UPDATE_HOTKEY_SCHEDULE_MINUTE')}")
 
 for i, queries in enumerate(queries_list):
     set_key('.env', 'QUERIES_GROUP_6', "")
