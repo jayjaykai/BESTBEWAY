@@ -22,13 +22,13 @@ https://bestbeway.tdt-tw.online/
 
 ![][architecture]
 
-[architecture]: ./readme/Architecture.jpg
+[architecture]: ./readme/Architecture.png
 
 ### Database
 
 ![][database]
 
-[database]: ./readme/database.jpg
+[database]: ./readme/database.png
 
 ### CI/CD
 
