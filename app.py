@@ -22,24 +22,34 @@ queries_list = [
 ]
 
 print("queries_list: ", queries_list)
-print(f"APScheduler_1 for crawling product data Starts in every {os.getenv('SCHEDULE_DAY')}")
-print(f"APScheduler_1 for crawling product data Starts at {os.getenv('SCHEDULE_STARTHOUR')}:{os.getenv('SCHEDULE_STARTMIN')}")
-print(f"APScheduler_1 for crawling product data Jobs between every {os.getenv('SCHEDULE_BETWEENHOUR') } hour(s)")
-print(f"APScheduler_2 Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
-print(f"APScheduler_3 Updating Hotkey Job Start at {os.getenv('UPDATE_HOTKEY_SCHEDULE_HOUR')}:{os.getenv('UPDATE_HOTKEY_SCHEDULE_MINUTE')}")
+start_hour = int(os.getenv("SCHEDULE_STARTHOUR"))
+between_hour = int(os.getenv("SCHEDULE_BETWEENHOUR"))
+start_minute = int(os.getenv("SCHEDULE_STARTMIN"))
+schedule_day = os.getenv("SCHEDULE_DAY")
 
+# 每周更新商品資料
 for i, queries in enumerate(queries_list):
     set_key('.env', 'QUERIES_GROUP_6', "")
+    hour = start_hour + between_hour * i
+    job_day = schedule_day
+
+    # 檢查是否跨日
+    if hour >= 24:
+        hour = hour % 24
+        job_day = str((int(schedule_day) + 1) % 7)
+
+    print(f"APScheduler_1-{i} for crawling product data Starts at {hour}:{start_minute} on {job_day}")
     scheduler.add_job(
-        update_data, 
-        'cron', 
-        day_of_week=os.getenv("SCHEDULE_DAY"), 
-        hour=(int(os.getenv("SCHEDULE_STARTHOUR")) + int(os.getenv("SCHEDULE_BETWEENHOUR"))*i) % 24, 
-        minute=int(os.getenv("SCHEDULE_STARTMIN")), 
+        update_data,
+        'cron',
+        day_of_week=job_day,
+        hour=hour,
+        minute=start_minute,
         args=[queries]
     )
 
 # 每日刪除七日前 articles data
+print(f"APScheduler_2 Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
 scheduler.add_job(
     delete_7days_articles_data, 
     'cron', 
@@ -49,6 +59,7 @@ scheduler.add_job(
 )
 
 # 每日更新熱搜文章關鍵字到RDS
+print(f"APScheduler_3 Updating Hotkey Job Start at {os.getenv('UPDATE_HOTKEY_SCHEDULE_HOUR')}:{os.getenv('UPDATE_HOTKEY_SCHEDULE_MINUTE')}")
 scheduler.add_job(
     save_hot_keywords_controller, 
     'cron', 
