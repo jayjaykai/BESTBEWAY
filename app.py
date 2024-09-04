@@ -27,26 +27,32 @@ between_hour = int(os.getenv("SCHEDULE_BETWEENHOUR"))
 start_minute = int(os.getenv("SCHEDULE_STARTMIN"))
 schedule_day = os.getenv("SCHEDULE_DAY")
 
+days_of_week = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+def increment_day_of_week(current_day, increment):
+    current_index = days_of_week.index(current_day.lower())
+    new_index = (current_index + increment) % 7
+    return days_of_week[new_index]
+
 # 每周更新商品資料
 for i, queries in enumerate(queries_list):
-    set_key('.env', 'QUERIES_GROUP_6', "")
     hour = start_hour + between_hour * i
-    job_day = schedule_day
-
+    day_of_week = schedule_day
     # 檢查是否跨日
     if hour >= 24:
         hour = hour % 24
-        job_day = str((int(schedule_day) + 1) % 7)
+        day_of_week = increment_day_of_week(schedule_day, 1)
 
-    print(f"APScheduler_1-{i} for crawling product data Starts at {hour}:{start_minute} on {job_day}")
+    print(f"APScheduler_1-{i} for crawling product data Starts at {hour}:{start_minute} on {day_of_week}")
     scheduler.add_job(
         update_data,
         'cron',
-        day_of_week=job_day,
+        day_of_week=day_of_week,
         hour=hour,
         minute=start_minute,
         args=[queries]
     )
+
 
 # 每日刪除七日前 articles data
 print(f"APScheduler_2 Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
