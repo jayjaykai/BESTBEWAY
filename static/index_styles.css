@@ -310,6 +310,28 @@ html{
     transition: all 0.3s ease-in-out;
 }
 
+.filter-section {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
+.filter-section__options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 0 auto;
+}
+
+.filter-section__option {
+    display: flex;
+    align-items: center;
+}
+
+.filter-section__option input[type="checkbox"] {
+    margin-right: 10px;
+}
+
 .product-list {
     display: flex;
     flex-wrap: wrap;
@@ -318,6 +340,11 @@ html{
     margin: auto;
     padding: 20px;
     border-radius: 4px;
+}
+
+.single-product {
+    width: 100% !important;
+    text-align: center;
 }
 
 .product-list__item {
