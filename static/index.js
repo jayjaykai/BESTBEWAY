@@ -9,6 +9,7 @@ let query = '';
 let maxSearchPage = 2;
 const loadedProducts = new Set();
 let currentTab = 'products';
+let isFiltering = false;
 
 async function performSearch() {
     let query = document.getElementById('search-query').value.trim();
@@ -54,6 +55,7 @@ async function searchProducts() {
     from = 0;
     currentPage = 0;
     allDataLoaded = false;
+    allCheckboxInitialized = false;
     loadedProducts.clear();
     loadedSellers.clear();
 
@@ -73,13 +75,10 @@ async function searchProducts() {
     } 
 }
 
-function getSelectedSellers() {
-    return Array.from(document.querySelectorAll('.seller-filter:checked'))
-                .map(cb => cb.value.trim());
-}
-
 let loadedSellers = new Set();
 let sellerFilterContainer = document.getElementById('seller-filter'); 
+let allCheckboxInitialized = false; // 標記是否已經添加 ALL 篩選框
+
 async function loadProducts() {
     if (loading || allDataLoaded) return;
     loading = true;
@@ -101,6 +100,19 @@ async function loadProducts() {
         currentPage += 1;
 
         let newItemsAdded = false;
+
+        // 如果 "ALL" 篩選框尚未添加，先添加
+        if (!allCheckboxInitialized) {
+            let allOption = document.createElement('div');
+            allOption.className = 'seller-filter__option';
+            allOption.innerHTML = `
+                <input type="checkbox" class="seller-filter-all" id="seller-all" name="seller" value="all" checked>
+                <label for="seller-all">ALL</label>
+            `;
+            sellerFilterContainer.appendChild(allOption);
+            allCheckboxInitialized = true;
+        }
+
         data.forEach(item => {
             if (!loadedProducts.has(item.title)) {
                 loadedProducts.add(item.title);
@@ -371,7 +383,7 @@ async function handleSearchInput() {
     }, 300);
 }
 
-document.addEventListener('click', function(event) {
+document.addEventListener('click', (event)=> {
     let searchInput = document.getElementById('search-query');
     let suggestionsDiv = document.getElementById('suggestions');
 
@@ -381,6 +393,7 @@ document.addEventListener('click', function(event) {
 });
 
 window.addEventListener('scroll', async() => {
+    if (isFiltering) return;
     query = document.getElementById('search-query').value;
     if (query) {
         let element = document.getElementById('product-list');
@@ -416,7 +429,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     });
 });
 
-window.addEventListener('scroll', function() {
+window.addEventListener('scroll', ()=> {
     var backToTopButton = document.getElementById('button-back-to-top');
     if (window.scrollY > 340) {
         backToTopButton.style.display = 'flex';
@@ -426,7 +439,7 @@ window.addEventListener('scroll', function() {
 });
 
 // 點擊按鈕返回頂部
-document.getElementById('button-back-to-top').addEventListener('click', function() {
+document.getElementById('button-back-to-top').addEventListener('click', ()=> {
     window.scrollTo({ top: 340, behavior: 'smooth' });
 });
 
@@ -470,30 +483,47 @@ function getSelectedSellers() {
                 .map(cb => cb.value.trim());
 }
 
-document.addEventListener('change', function(event) {
+document.addEventListener('change', (event)=> {
     if (event.target.classList.contains('seller-filter')) {
-        let selectedSellers = getSelectedSellers();
-        
-        document.querySelectorAll('.product-list__item').forEach(function(item) {
+        filterProducts();
+    }
+});
+
+document.addEventListener('change', (event)=> {
+    if (event.target.classList.contains('seller-filter-all')) {
+        let allChecked = event.target.checked;
+        isFiltering = true;
+        // 點選All全部改變
+        document.querySelectorAll('.seller-filter').forEach((checkbox)=>{
+            checkbox.checked = allChecked;
+        });
+        filterProducts(); 
+        setTimeout(() => { isFiltering = false; }, 500);
+    }
+});
+
+function filterProducts() {
+    let selectedSellers = getSelectedSellers();
+    document.querySelectorAll('.product-list__item').forEach((item)=>{
             let seller = item.querySelector('.product-list__seller').textContent.trim();
             if (selectedSellers.includes(seller)) {
                 item.style.display = 'block';
             } else {
                 item.style.display = 'none';
             }
-        });
+        }    
+    );
 
-        //確認是否只有一個商品的情況
-        let visibleProductItems = Array.from(document.querySelectorAll('.product-list__item'))
-            .filter(item => item.offsetParent !== null);
+    // 確認是否只有一個商品的情況
+    let visibleProductItems = Array.from(document.querySelectorAll('.product-list__item'))
+        .filter(item => item.offsetParent !== null);
 
-        if (visibleProductItems.length === 1) {
-            visibleProductItems[0].classList.add('single-product');
-        } else {
-            visibleProductItems.forEach(item => item.classList.remove('single-product'));
-        }
+    if (visibleProductItems.length === 1) {
+        visibleProductItems[0].classList.add('single-product');
+    } else {
+        visibleProductItems.forEach(item => item.classList.remove('single-product'));
     }
-});
+}
 
 searchCommonArticles();
 fetchHotKeywords();
