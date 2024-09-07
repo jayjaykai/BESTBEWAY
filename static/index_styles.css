@@ -318,6 +318,7 @@ html{
 
 .filter-section__options {
     display: flex;
+    align-items: center;
     gap: 10px;
     flex-wrap: wrap;
     margin: 0 auto;

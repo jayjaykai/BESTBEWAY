@@ -56,7 +56,7 @@ async function searchProducts() {
     allDataLoaded = false;
     loadedProducts.clear();
     loadedSellers.clear();
-    
+
     document.getElementById('seller-filter').innerHTML = "";
     document.getElementById('product-list').innerHTML = "";
 
@@ -73,6 +73,10 @@ async function searchProducts() {
     } 
 }
 
+function getSelectedSellers() {
+    return Array.from(document.querySelectorAll('.seller-filter:checked'))
+                .map(cb => cb.value.trim());
+}
 
 let loadedSellers = new Set();
 let sellerFilterContainer = document.getElementById('seller-filter'); 
@@ -113,6 +117,7 @@ async function loadProducts() {
                         <a class="product-list__link" href="${item.link}" target="_blank">查看商品</a>
                     </div>
                 `;
+
                 productList.appendChild(div);
                 newItemsAdded = true;
                 // 加入賣家的篩選選項
@@ -126,7 +131,13 @@ async function loadProducts() {
                     `;
                     sellerFilterContainer.appendChild(sellerOption);
                 }
-                // 加入賣家的篩選選項
+                // 根據當前篩選條件決定是否顯示產品
+                let selectedSellers = getSelectedSellers();
+                if (selectedSellers.includes(item.seller.trim())) {
+                    div.style.display = 'block';
+                } else {
+                    div.style.display = 'none';
+                }
             }
         });
 
@@ -454,11 +465,14 @@ function handleKeywordClick(keyword) {
     searchArticles();
 }
 ////////////////////////////////////// 熱搜關鍵字//////////////////////////////////////////
+function getSelectedSellers() {
+    return Array.from(document.querySelectorAll('.seller-filter:checked'))
+                .map(cb => cb.value.trim());
+}
 
 document.addEventListener('change', function(event) {
     if (event.target.classList.contains('seller-filter')) {
-        let selectedSellers = Array.from(document.querySelectorAll('.seller-filter:checked'))
-                                   .map(cb => cb.value);
+        let selectedSellers = getSelectedSellers();
         
         document.querySelectorAll('.product-list__item').forEach(function(item) {
             let seller = item.querySelector('.product-list__seller').textContent.trim();
@@ -480,7 +494,6 @@ document.addEventListener('change', function(event) {
         }
     }
 });
-
 
 searchCommonArticles();
 fetchHotKeywords();
