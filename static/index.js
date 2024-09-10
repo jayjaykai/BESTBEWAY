@@ -440,7 +440,7 @@ window.addEventListener('scroll', ()=> {
 
 // 點擊按鈕返回頂部
 document.getElementById('button-back-to-top').addEventListener('click', ()=> {
-    window.scrollTo({ top: 340, behavior: 'smooth' });
+    window.scrollTo({ top: 420, behavior: 'smooth' });
 });
 
 ////////////////////////////////////// 熱搜關鍵字//////////////////////////////////////////
