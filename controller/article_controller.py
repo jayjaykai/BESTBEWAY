@@ -18,7 +18,7 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
             Cache.increment_keyword_score(query)
         
         if cached_data:
-            print("Use Redis article Cache!")
+            print(f"Use Redis article Cache_{query}!")
             return json.loads(cached_data)
         
         print("Get data from MySQL DB...")
@@ -29,7 +29,7 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
             
             if Cache.is_redis_available():
                 print("Write Redis article Cache!")
-                Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
+                Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=86400)
             
             session.close()
         else:
@@ -38,7 +38,7 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
             
             if Cache.is_redis_available():
                 print("Write Redis article Cache!")
-                Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=600)
+                Cache.redis_client.set(cache_key, json.dumps({"search_results": [result.dict() for result in results], "recommended_items": recommended_items}), ex=86400)
 
         print("Return data!")
         return SearchResponse(search_results=results, recommended_items=recommended_items)

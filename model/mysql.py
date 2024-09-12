@@ -177,6 +177,15 @@ def delete_7days_articles_data(retries=3, delay=5):
             db_session.commit()
             print(f"Deleted {result_articles} rows from Articles table.")
             print(f"Deleted {result_recommended_items} rows from ArticlesRecommendedItems table.")
+            # 使用一個 set 來存放已經刪除過快取的 query，避免重複刪除
+            deleted_queries = set()
+            for article in articles_to_delete:
+                article_query = article.query             
+                # 如果該 query 尚未刪除過快取，執行快取刪除
+                if article_query not in deleted_queries:
+                    Cache.delete_all_cache_for_article_query(article_query)
+                    deleted_queries.add(article_query)
+                
             break
 
         except OperationalError as op_err:
@@ -197,15 +206,6 @@ def delete_7days_articles_data(retries=3, delay=5):
 
     else:
         print("Failed to delete data after several attempts.")
-
-def write_hot_keywords_to_redis(keywords_with_scores):
-    try:
-        if keywords_with_scores:
-            print("Writing hot keywords to Redis...")
-            for item in keywords_with_scores:
-                Cache.redis_client.zadd('top_keywords', {item['keyword']: item['score']})
-    except Exception as e:
-        print(f"Error occurred while writing data to Redis: {e}")
 
 def get_hot_keywords_from_db(db_session: Session):
     try:

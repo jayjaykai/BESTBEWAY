@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from model.cache import Cache
-from model.mysql import get_session, save_hot_keywords_to_db, get_hot_keywords_from_db, write_hot_keywords_to_redis
+from model.mysql import get_session, save_hot_keywords_to_db, get_hot_keywords_from_db
 
 async def get_hot_keywords_controller():
     try:
@@ -14,7 +14,7 @@ async def get_hot_keywords_controller():
             db_keywords = get_hot_keywords_from_db(session)
             keywords_with_scores = [{"keyword": keyword.keyword, "score": keyword.score} for keyword in db_keywords]
             # 將資料寫入 Redis
-            write_hot_keywords_to_redis(keywords_with_scores)
+            Cache.write_hot_keywords_to_redis(keywords_with_scores)
    
         return {"hot_keywords": keywords_with_scores}
     except Exception as e:

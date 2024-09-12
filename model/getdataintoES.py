@@ -16,6 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import gc
 from model.elasticsearch_client import get_elasticsearch_client
+from model.cache import Cache
 
 load_dotenv()
 
@@ -358,6 +359,9 @@ def main(queries):
             time.sleep(random.uniform(15, 30))  # 重試前等待一段時間
 
         print(f"Query '{query}' count: ", len(results))
+        # 刪除 query 的所有 Redis 快取
+        Cache.delete_all_cache_for_product_query(query)
+
         if len(results) == 0:
             update_failed_queries(query) # 爬蟲失敗紀錄到新的陣列去，下次再補槍
         time.sleep(random.uniform(5, 10))

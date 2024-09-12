@@ -28,7 +28,7 @@ async def search_product_controller(query: str, from_: int = 0, size: int = 50, 
         
         if Cache.redis_client:
             print("Write Redis Product Cache!")
-            Cache.redis_client.set(cache_key, json.dumps(search_results), ex=600)
+            Cache.redis_client.set(cache_key, json.dumps(search_results), ex=86400)
         
         return [ProdSearchResult(**result) for result in search_results["items"]]
     except Exception as e:
