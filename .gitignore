@@ -1,1 +1,8 @@
 .env
+app_bk.py
+test_nltk.py
+test.py
+testESquery.py
+test_pyppeteer.py
+nltk_api.py
+write_to_es.py

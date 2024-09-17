@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    environment:
+      - TZ=Asia/Taipei
+    container_name: fastapi_app
+    # shm_size: '1gb'
+    # ports:
+    #   - "8080:8080"
+    depends_on:
+      - redis
+      - elasticsearch
+    env_file:
+      - .env
+    networks:
+      - bestbeway_network
+    volumes:
+      - ./static:/app/static
+    command: ["sh", "-c", "sleep 30 && uvicorn app:app --host 0.0.0.0 --port 8080"]
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/nginx/sites-available/bestbeway.tdt-tw.online:/etc/nginx/conf.d/bestbeway.tdt-tw.online.conf
+      - /etc/letsencrypt/live/bestbeway.tdt-tw.online:/etc/letsencrypt/live/bestbeway.tdt-tw.online
+      - /etc/letsencrypt/archive/bestbeway.tdt-tw.online:/etc/letsencrypt/archive/bestbeway.tdt-tw.online
+      - /etc/letsencrypt/ssl-dhparams.pem:/etc/letsencrypt/ssl-dhparams.pem
+    networks:
+      - bestbeway_network
+    depends_on:
+      - web
+    command: ["/bin/sh", "-c", "rm /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+  
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false  # 關閉安全性設定，測試環境建議
+      - bootstrap.memory_lock=true  # 鎖定記憶體，提升效能
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"  # 調整 JVM 記憶體設定
+    ports:
+      - 9200:9200
+      - 9300:9300
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - ./init_elasticsearch.sh:/usr/share/elasticsearch/init_elasticsearch.sh # 加入 "fielddata": true
+    env_file:
+      - .env
+    networks:
+      - bestbeway_network
+    command: /bin/bash -c "/usr/local/bin/docker-entrypoint.sh; sleep 20; /usr/share/elasticsearch/init_elasticsearch.sh"
+
+  redis:
+    image: "redis:alpine"
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - bestbeway_network
+
+networks:
+  bestbeway_network:
+    driver: bridge
+
+volumes:
+  es_data:

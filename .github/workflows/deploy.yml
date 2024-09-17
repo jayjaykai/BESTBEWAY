@@ -1,0 +1,58 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+    paths-ignore:
+      - README.md
+  pull_request:
+    branches:
+      - develop
+    paths-ignore:
+      - README.md
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Run pytests
+      run: |
+        python3 -m pip install -r requirements.txt
+        pytest function_test.py
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Prepare SSH Key and Deploy
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}
+        EC2_USER: ${{ secrets.EC2_USER }}
+        EC2_KEY: ${{ secrets.EC2_KEY }}
+      run: |
+        echo "${EC2_KEY}" > key.pem
+        chmod 600 key.pem
+
+        ssh -i key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
+          cd /home/ubuntu/BESTBEWAY
+
+          # 強制 pull github 的分支
+          git fetch origin
+          git reset --hard origin/develop
+
+          docker-compose down
+
+          # 移除舊的 bestbeway-web image
+          docker images -q bestbeway-web | xargs --no-run-if-empty docker rmi
+
+          docker-compose up -d --build
+        ENDSSH
