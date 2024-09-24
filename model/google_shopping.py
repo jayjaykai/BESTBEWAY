@@ -150,11 +150,16 @@ async def search_es_products(query, from_=0, size=50):
         print(f"Querying Elasticsearch with from_={from_}")
         # 獲取符合查詢條件的總資料數量
         count_response = es.count(index=index_name, body={
+            # "query": {
+            #     "multi_match": {
+            #         "query": query,
+            #         "fields": ["title", "query"],
+            #         "type": "phrase"
+            #     }
+            # }
             "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["title", "query"],
-                    "type": "phrase"
+                "match_phrase": {
+                    "title": query
                 }
             }
         })
@@ -170,10 +175,8 @@ async def search_es_products(query, from_=0, size=50):
             "query": {
                 "function_score": {
                     "query": {
-                        "multi_match": {
-                            "query": query,
-                            "fields": ["title", "query"],
-                            "type": "phrase"
+                        "match_phrase": {
+                            "title": query
                         }
                     },
                     "script_score": {
@@ -208,8 +211,7 @@ async def search_es_products(query, from_=0, size=50):
         if es_response['hits']['hits']:
             hits = es_response['hits']['hits']
             for hit in hits:
-                if query in hit["_source"]["title"]:
-                    items.append(hit["_source"])
+                items.append(hit["_source"])
 
     except Exception as e:
         print(f"Error searching Elasticsearch: {e}")
