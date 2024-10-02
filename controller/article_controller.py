@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from model.mysql import get_session, get_articles_by_query, save_articles
+from model.mysql import get_session, get_articles_by_query, save_articles, get_null_hotkeys_articles_by_query
 from model.cache import Cache
 from model.google_search_api import search_articles, SearchResponse, SearchResult
 import json
@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 executor = ThreadPoolExecutor(max_workers=2)
 
-async def search_articles_controller(query: str, start: int = 1, pages: int = 1) -> SearchResponse:
+async def search_articles_controller(query: str, start: int = 1, pages: int = 2) -> SearchResponse:
     session = get_session()
     try:
         cache_key = f"articleCache#{query}_keyword"
@@ -44,3 +44,16 @@ async def search_articles_controller(query: str, start: int = 1, pages: int = 1)
         return SearchResponse(search_results=results, recommended_items=recommended_items)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+async def save_hot_keywords_articles_controller():
+    session = get_session()
+    try:
+        print("Get null hot keywords articles from MySQL DB...")
+        hot_keywords = get_null_hotkeys_articles_by_query(session)
+
+        for keyword in hot_keywords:
+            keyword_str = keyword['keyword']
+            print(f"Processing articles for keyword: {keyword_str}")
+            await search_articles_controller(keyword_str)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in save_hot_keywords_articles: {str(e)}")
