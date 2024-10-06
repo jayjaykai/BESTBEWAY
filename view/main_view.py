@@ -33,9 +33,9 @@ async def search_product(query: str, from_: int = 0, size: int = 50, current_pag
         raise e
     
 @app.get("/api/search_suggestions", response_model=List[str], tags=["搜尋出現相關關鍵字內容"])
-def search_suggestions(query: str = Query(...)):
+async def search_suggestions(query: str = Query(...)):
     try:
-        suggestions = search_suggestions_controller(query)
+        suggestions = await search_suggestions_controller(query)
         return suggestions
     except HTTPException as e:
         raise e

@@ -5,13 +5,14 @@ from model.mysql import delete_7days_articles_data
 from view.main_view import app
 from model.cache import Cache
 from model.getdataintoES import main as update_data
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # 使用 AsyncIOScheduler
 import os
 from dotenv import load_dotenv, set_key
 
 load_dotenv()
 
-scheduler = BackgroundScheduler(timezone="Asia/Taipei")
+# 使用 AsyncIOScheduler 實現非同步
+scheduler = AsyncIOScheduler(timezone="Asia/Taipei")
 
 # Read queries from environment variables
 queries_list = [
@@ -36,6 +37,12 @@ def increment_day_of_week(current_day, increment):
     new_index = (current_index + increment) % 7
     return days_of_week[new_index]
 
+async def delete_and_save():
+    # 執行刪除操作
+    await delete_7days_articles_data()
+    # 重新抓取被刪除的前10大熱搜關鍵字文章
+    await save_hot_keywords_articles_controller()
+
 # 每周更新商品資料
 for i, queries in enumerate(queries_list):
     hour = start_hour + between_hour * i
@@ -58,7 +65,7 @@ for i, queries in enumerate(queries_list):
 # 每日更新熱搜文章關鍵字到RDS
 print(f"APScheduler_2 Updating Hotkey Job Start at {os.getenv('UPDATE_HOTKEY_SCHEDULE_HOUR')}:{os.getenv('UPDATE_HOTKEY_SCHEDULE_MINUTE')}")
 scheduler.add_job(
-    save_hot_keywords_controller, 
+    save_hot_keywords_controller,
     'cron', 
     day_of_week=os.getenv("UPDATE_HOTKEY_SCHEDULE_DAY"),
     hour=int(os.getenv("UPDATE_HOTKEY_SCHEDULE_HOUR")),
@@ -68,8 +75,7 @@ scheduler.add_job(
 # 每日刪除七日前 articles data
 print(f"APScheduler_3 Deleting Job Start at {os.getenv('DELETE_SCHEDULE_HOUR')}:{os.getenv('DELETE_SCHEDULE_MINUTE')}")
 scheduler.add_job(
-    # delete_7days_articles_data, 
-    lambda: asyncio.run(delete_and_save()),
+    delete_and_save,
     'cron', 
     day_of_week=os.getenv("DELETE_SCHEDULE_DAY"),
     hour=int(os.getenv("DELETE_SCHEDULE_HOUR")),
@@ -86,11 +92,5 @@ async def startup_event():
 async def shutdown_event():
     scheduler.shutdown()
 
-async def delete_and_save():
-    # 執行刪除操作
-    await delete_7days_articles_data()
-    # 重新抓取被刪除的前10大熱搜關鍵字文章
-    await save_hot_keywords_articles_controller()
-
 # Redis
-Cache.redis_client = Cache.create_redis_client() 
+Cache.redis_client = Cache.create_redis_client()

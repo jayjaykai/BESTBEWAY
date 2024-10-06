@@ -1,16 +1,20 @@
+import asyncio
 import os
 import time
-from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, desc, func, text, DateTime
+from sqlalchemy import create_engine, Column, String, Integer, Text, UniqueConstraint, delete, desc, func, text, DateTime, select
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy import ForeignKey
+# from sqlalchemy.future import select
 from mysql.connector.pooling import MySQLConnectionPool
 from dotenv import load_dotenv
 from typing import Any, List, Dict
 from model.google_search_api import SearchResult
 from model.cache import Cache
 from sqlalchemy.exc import IntegrityError
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
@@ -47,58 +51,43 @@ class HotKeywords(Base):
     score = Column(Integer, nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-class DBConfig:
+
+class AsyncDBConfig:
     def __init__(self):
-        self.pool = None
         self.engine = None
-        self.SessionLocal = None
+        self.AsyncSessionLocal = None
 
     def initialize_mysql_pool(self):
-        pool_size_str = os.getenv("POOL_SIZE")
-        pool_size = 32 if pool_size_str is None else int(pool_size_str)
-
-        self.engine = create_engine(
-            f'mysql+mysqlconnector://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST", "localhost")}/{os.getenv("DB_NAME")}',
+        pool_size = int(os.getenv("POOL_SIZE", 32))
+        self.engine = create_async_engine(
+            f'mysql+asyncmy://{os.getenv("DB_USER")}:{os.getenv("DB_PASSWORD")}@{os.getenv("DB_HOST", "localhost")}/{os.getenv("DB_NAME")}',
             pool_size=pool_size,
             max_overflow=10,
-            pool_pre_ping=True
+            pool_pre_ping=True,
         )
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-   
-    def close_connection_pool(self):
-        if self.pool:
-            self.pool.close()
+        self.AsyncSessionLocal = sessionmaker(
+            bind=self.engine,
+            expire_on_commit=False,
+            class_=AsyncSession
+        )
 
-    def get_session(self) -> Session:
-        if self.pool is None:
-            self.initialize_mysql_pool()
-        return self.SessionLocal()
+db = AsyncDBConfig()
+db.initialize_mysql_pool()
 
-db = DBConfig()
+@asynccontextmanager
+async def get_session():
+    async with db.AsyncSessionLocal() as session:
+        yield session
 
-def get_session():
-    return db.get_session()
-
-def initialize_database():
-    db.initialize_mysql_pool()
-    Base.metadata.create_all(bind=db.engine)
-
-def close_database():
-    db.close_connection_pool()
-
-def get_articles_by_query(db_session: Session, query: str) -> List[Dict[str, Any]]:
-    results = db_session.query(
-        Article,
-        ArticlesRecommendedItems.recommended_items
-    ).join(
-        ArticlesRecommendedItems,
-        Article.recommended_items_id == ArticlesRecommendedItems.id
-    ).filter(
-        Article.query.ilike(f"%{query}%")
-    ).all()
-
+async def get_articles_by_query(db_session: AsyncSession, query: str) -> List[Dict[str, Any]]:
+    stmt = (
+        select(Article, ArticlesRecommendedItems.recommended_items)
+        .join(ArticlesRecommendedItems, Article.recommended_items_id == ArticlesRecommendedItems.id)
+        .filter(Article.query.ilike(f"%{query}%"))
+    )
+    results = await db_session.execute(stmt)
     articles = []
-    for article, recommended_items in results:
+    for article, recommended_items in results.fetchall():
         articles.append({
             'link': article.link,
             'title': article.title,
@@ -107,169 +96,190 @@ def get_articles_by_query(db_session: Session, query: str) -> List[Dict[str, Any
         })
     return articles
 
-def get_null_hotkeys_articles_by_query(db_session: Session) -> List[Dict[str, Any]]:
-    # subquery
+async def get_null_hotkeys_articles_by_query(db_session: AsyncSession) -> List[Dict[str, Any]]:
     subquery = (
-        db_session.query(HotKeywords.keyword, HotKeywords.score)
+        select(HotKeywords.keyword, HotKeywords.score)
         .order_by(HotKeywords.score.desc())
         .limit(10)
         .subquery()
     )
-    # main query
-    results = (
-        db_session.query(subquery.c.keyword)
+
+    stmt = (
+        select(subquery.c.keyword)
         .outerjoin(Article, Article.query == subquery.c.keyword)
-        .filter(Article.query == None)
-        .all()
+        .where(Article.query == None)
+    )
+
+    results = await db_session.execute(stmt)
+    return [{'keyword': row.keyword} for row in results.fetchall()]
+
+
+async def save_articles(articles: List[SearchResult], query: str, recommended_items: List[str]):
+    print("Saving articles data into MySQL DB...")
+    async with get_session() as db_session:  # 產生不同session處理
+        try:
+            recommended_items_str = ",".join(recommended_items)
+            recommended_items_entry = await db_session.execute(
+                select(ArticlesRecommendedItems)
+                .filter(ArticlesRecommendedItems.recommended_items == recommended_items_str)
+                .with_for_update()
+            )
+            recommended_items_entry = recommended_items_entry.scalar_one_or_none()
+
+            if not recommended_items_entry:
+                recommended_items_entry = ArticlesRecommendedItems(recommended_items=recommended_items_str, query=query)
+                db_session.add(recommended_items_entry)
+                await db_session.flush()
+            
+            recommended_items_id = recommended_items_entry.id
+
+            for article in articles:
+                existing_article = await db_session.execute(
+                    select(Article)
+                    .filter(Article.query == query, Article.link == article.link)
+                    .with_for_update()
+                )
+                existing_article = existing_article.scalar_one_or_none()
+
+                if existing_article:
+                    print(f"Article already exists for query '{query}' and link '{article.link}', skipping insertion.")
+                    continue
+
+                db_article = Article(
+                    query=query,
+                    link=article.link,
+                    title=article.title,
+                    snippet=article.snippet,
+                    recommended_items_id=recommended_items_id
+                )
+                db_session.add(db_article)
+
+            await db_session.commit()
+
+        except IntegrityError:
+            await db_session.rollback()
+            print(f"IntegrityError: Duplicate entry found for query '{query}' or link already exists.")
+        
+        except Exception as e:
+            await db_session.rollback()
+            print(f"Failed to save articles: {str(e)}")
+
+        finally:
+            print(f"Saved articles data for query '{query}' into MySQL DB!")
+
+async def get_suggestions(db_session: AsyncSession, search_query: str) -> List[str]:
+    stmt = select(ArticlesRecommendedItems.query).where(
+        ArticlesRecommendedItems.query.ilike(f"%{search_query}%")
     )
     
-    return [{'keyword': row.keyword} for row in results]
-
-def save_articles(db_session: Session, articles: List[SearchResult], query: str, recommended_items: List[str]):
-    print("Saving articles data into MySQL DB...")
-    try:
-        # check or insert recommended_items into the articles_recommended_items table
-        recommended_items_str = ",".join(recommended_items)
-        recommended_items_entry = db_session.query(ArticlesRecommendedItems).filter_by(recommended_items=recommended_items_str).with_for_update().first()
-
-        if not recommended_items_entry:
-            recommended_items_entry = ArticlesRecommendedItems(recommended_items=recommended_items_str, query=query)
-            db_session.add(recommended_items_entry)
-            db_session.flush()  # 提交但不 commit，來取得 ID
-
-        recommended_items_id = recommended_items_entry.id
-
-        # Insert articles data into the articles table
-        for article in articles:
-            existing_article = db_session.query(Article).filter_by(query=query, link=article.link).with_for_update().first()
-
-            if existing_article:
-                print(f"Article already exists for query '{query}' and link '{article.link}', skipping insertion.")
-                continue
-
-            db_article = Article(
-                query=query,
-                link=article.link,
-                title=article.title,
-                snippet=article.snippet,
-                recommended_items_id=recommended_items_id
-            )
-            db_session.add(db_article)    
-        db_session.commit()
-
-    except IntegrityError as e:
-        db_session.rollback()
-        print(f"IntegrityError: Duplicate entry found for query '{query}' or link already exists.")
-
-    except Exception as e:
-        db_session.rollback()
-        print("Failed to save articles:", str(e))
-
-    finally:
-        print(f"Saved articles data for query '{query}' into MySQL DB!")
-        db_session.close()
-
-def get_suggestions(db_session: Session, query: str):
-    results = db_session.query(
-        ArticlesRecommendedItems.query
-    ).filter(
-        ArticlesRecommendedItems.query.ilike(f"%{query}%")
-    ).all()
-
-    suggestions = []
-    for r in results:
-        suggestions.append(r.query)
+    results = await db_session.execute(stmt)
+    
+    # suggestions = [row.query for row in results.scalars().all()]
+    suggestions = results.scalars().all()
     return suggestions
 
 async def delete_7days_articles_data(retries=3, delay=5):
     for attempt in range(retries):
         db_session = None
         try:
-            db_session = get_session()
-            if db_session is None:
-                raise OperationalError("Session not available", params=None, orig=None)
+            async with get_session() as db_session:
 
-            # 設定刪除7天前的資料
-            seven_days_ago = func.now() - text('INTERVAL 7 DAY')
-            articles_to_delete = db_session.query(Article).filter(Article.created_at < seven_days_ago).all()
-            recommended_items_ids_to_delete = [article.recommended_items_id for article in articles_to_delete if article.recommended_items_id is not None]
+                # 設定刪除7天前的資料
+                seven_days_ago = func.now() - text('INTERVAL 7 DAY')
 
-            # 刪除 articles 表中的資料
-            result_articles = db_session.query(Article).filter(Article.created_at < seven_days_ago).delete(synchronize_session='fetch')
+                articles_to_delete = await db_session.execute(
+                    select(Article).where(Article.created_at < seven_days_ago)
+                )
+                articles_to_delete = articles_to_delete.scalars().all()
 
-            # 刪除 articles_recommended_items 表中的資料
-            result_recommended_items = 0
-            if recommended_items_ids_to_delete:
-                result_recommended_items = db_session.query(ArticlesRecommendedItems).filter(
-                    ArticlesRecommendedItems.id.in_(recommended_items_ids_to_delete)
-                ).delete(synchronize_session='fetch')
+                # 獲取要刪除的推薦商品 ID
+                recommended_items_ids_to_delete = [
+                    article.recommended_items_id for article in articles_to_delete
+                    if article.recommended_items_id is not None
+                ]
 
-            db_session.commit()
-            print(f"Deleted {result_articles} rows from Articles table.")
-            print(f"Deleted {result_recommended_items} rows from ArticlesRecommendedItems table.")
-            # 使用一個 set 來存放已經刪除過快取的 query，避免重複刪除
-            deleted_queries = set()
-            for article in articles_to_delete:
-                article_query = article.query             
-                # 如果該 query 尚未刪除過快取，執行快取刪除
-                if article_query not in deleted_queries:
-                    Cache.delete_all_cache_for_article_query(article_query)
-                    deleted_queries.add(article_query)
-                
-            break
+                # 刪除 Articles 中的資料
+                result_articles = await db_session.execute(
+                    delete(Article).where(Article.created_at < seven_days_ago)
+                    .execution_options(synchronize_session=False)
+                )
+
+                # 刪除 ArticlesRecommendedItems 中的資料
+                result_recommended_items = 0
+                if recommended_items_ids_to_delete:
+                    result_recommended_items = await db_session.execute(
+                        delete(ArticlesRecommendedItems).where(
+                            ArticlesRecommendedItems.id.in_(recommended_items_ids_to_delete)
+                        ).execution_options(synchronize_session=False)
+                    )
+
+                await db_session.commit()
+                print(f"Deleted {result_articles.rowcount} rows from Articles table.")
+                print(f"Deleted {result_recommended_items} rows from ArticlesRecommendedItems table.")
+
+                # 清除快取
+                deleted_queries = set()
+                for article in articles_to_delete:
+                    article_query = article.query             
+                    if article_query not in deleted_queries:
+                        Cache.delete_all_cache_for_article_query(article_query)
+                        deleted_queries.add(article_query)
+
+                break
 
         except OperationalError as op_err:
             print(f"OperationalError: {op_err}. Attempt {attempt + 1} of {retries}")
             if db_session:
-                db_session.rollback()
-            time.sleep(delay)
+                await db_session.rollback()
+            await asyncio.sleep(delay)
 
         except Exception as e:
             if db_session:
-                db_session.rollback()
+                await db_session.rollback()
             print(f"Error occurred while deleting data: {e}")
             break
 
         finally:
             if db_session:
-                db_session.close()
+                await db_session.close()
 
     else:
         print("Failed to delete data after several attempts.")
 
-def get_hot_keywords_from_db(db_session: Session):
+async def get_hot_keywords_from_db(db_session: AsyncSession):
     try:
-        keywords = db_session.query(HotKeywords).order_by(desc(HotKeywords.score)).limit(10).all()
+        result = await db_session.execute(
+            select(HotKeywords)
+            .order_by(desc(HotKeywords.score))
+            .limit(10)
+        )
+        keywords = result.scalars().all()  # 使用 scalars().all() 來處理多個記錄
         return keywords
+
     except Exception as e:
         print(f"Error occurred while fetching data from RDS: {e}")
-    finally:
-        db_session.close()
 
-def save_hot_keywords_to_db(db_session: Session, keywords_with_scores):
+async def save_hot_keywords_to_db(db_session: AsyncSession, keywords_with_scores):
     try:
         for item in keywords_with_scores:
             keyword = item["keyword"]
             score = item["score"]
 
-            # 檢查是否已存在該關鍵字
-            existing_entry = db_session.query(HotKeywords).filter_by(keyword=keyword).first()
+            existing_entry = await db_session.execute(
+                select(HotKeywords).filter_by(keyword=keyword)
+            )
+            existing_entry = existing_entry.scalar_one_or_none()
 
             if existing_entry:
-                # 更新已有的關鍵字分數
                 existing_entry.score = score
             else:
-                # 插入新關鍵字及其分數
                 new_entry = HotKeywords(keyword=keyword, score=score)
                 db_session.add(new_entry)
 
-        db_session.commit()
+        await db_session.commit()
         return True
 
     except Exception as e:
-        db_session.rollback()
+        await db_session.rollback()
         print(f"Error occurred while saving data: {e}")
         return False
-
-    finally:
-        db_session.close()

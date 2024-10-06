@@ -19,35 +19,36 @@ def normalize_query(query: str) -> str:
     print(f"Normalized Query: '{cleaned_query}'")
     return cleaned_query
 
-def search_suggestions_controller(query: str) -> list:
-    session = get_session()
-    try:
-        normalized_query = normalize_query(query)
-        if not normalized_query:
-            print("Normalized Query is empty, skipping MySQL query.")
-            return []
-        
-        cache_key = f"suggestionsCache#{normalized_query}"
-        print(f"Cache Key: {cache_key}")
+async def search_suggestions_controller(query: str) -> list:
+    # session = get_session()
+    async with get_session() as session:
+        try:
+            normalized_query = normalize_query(query)
+            if not normalized_query:
+                print("Normalized Query is empty, skipping MySQL query.")
+                return []
+            
+            cache_key = f"suggestionsCache#{normalized_query}"
+            print(f"Cache Key: {cache_key}")
 
-        cached_result = Cache.redis_client.get(cache_key) if Cache.redis_client else None
-        if cached_result:
-            if isinstance(cached_result, bytes):
-                cached_result = cached_result.decode('utf-8')
-            print(f"Use suggestionsCache {query} Cache!")
-            return cached_result.split(',')
+            cached_result = Cache.redis_client.get(cache_key) if Cache.redis_client else None
+            if cached_result:
+                if isinstance(cached_result, bytes):
+                    cached_result = cached_result.decode('utf-8')
+                print(f"Use suggestionsCache {query} Cache!")
+                return cached_result.split(',')
 
-        print("Get suggestions from MySQL DB...")
-        suggestions = get_suggestions(session, query)
-        filtered_suggestions = [s for s in suggestions if query in s]
+            print("Get suggestions from MySQL DB...")
+            suggestions = await get_suggestions(session, query)
+            filtered_suggestions = [s for s in suggestions if query in s]
 
-        if Cache.redis_client:
-            print("Write Suggestions Cache!")
-            Cache.redis_client.set(cache_key, ','.join(filtered_suggestions), ex=300)
+            if Cache.redis_client:
+                print("Write Suggestions Cache!")
+                Cache.redis_client.set(cache_key, ','.join(filtered_suggestions), ex=300)
 
-        return filtered_suggestions
+            return filtered_suggestions
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        session.close()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            await session.close()
