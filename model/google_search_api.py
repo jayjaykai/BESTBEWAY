@@ -8,8 +8,10 @@ from fastapi import HTTPException
 from dotenv import load_dotenv
 import jieba
 from fuzzywuzzy import process
+from rapidfuzz import process as rapid_process
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from function_test import generate_combined_text
+import concurrent.futures
 
 load_dotenv()
 
@@ -43,7 +45,7 @@ async def fetch_all_results(api_key: str, query: str, start: int, num_pages: int
     items = [item for sublist in results for item in sublist]
     return items
 
-async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> List[SearchResult]:
+async def search_articles(query: str, start: int = 1, num_pages: int = 1) -> List[SearchResult]:
     print("Get data from Google API...")
     api_key = os.getenv("GOOGLE_API_KEY")
     search_engine_ids = [
@@ -82,22 +84,23 @@ async def search_articles(query: str, start: int = 1, num_pages: int = 5) -> Lis
     threshold = 90
 
     # 比較網頁字串和商品列表，找到匹配的商品
+    # 將 all_words 轉為集合，提升查找效率
+    all_words_set = set(all_words)
     matched_items = set()
     for query in product_queries:
-        for word in all_words:
+        for word in all_words_set:
             if query in word and len(word) > 1:  # 確保做匹配的字串長度大於1
                 # print("matched word add: ", word)
                 matched_items.add(query)
                 break
         else:  # 如果没有匹配成功，進行模糊匹配
-            fuzzy_results = process.extract(query, all_words, limit=10)
+            fuzzy_results = rapid_process.extract(query, all_words, limit=10)
             for result in fuzzy_results:
                 if result[1] >= threshold and len(result[0]) > 1:  # 確保分詞字串長度大於1再做匹配
                     # print("fuzzy_results: ", result)
                     # print("matched_items add: ", query)
                     matched_items.add(query)
                     break
-
     print("Matched items:", list(matched_items))
 
     return article_results, list(matched_items)
