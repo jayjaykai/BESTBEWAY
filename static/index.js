@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
 window.addEventListener('scroll', ()=> {
     var backToTopButton = document.getElementById('button-back-to-top');
-    if (window.scrollY > 340) {
+    if (window.scrollY > 420) {
         backToTopButton.style.display = 'flex';
     } else {
         backToTopButton.style.display = 'none';

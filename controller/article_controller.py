@@ -6,7 +6,7 @@ from model.google_search_api import search_articles, SearchResponse, SearchResul
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-async def search_articles_controller(query: str, start: int = 1, pages: int = 2) -> SearchResponse:
+async def search_articles_controller(query: str, start: int = 1, pages: int = 1) -> SearchResponse:
     async with get_session() as session:
         try:
             cache_key = f"articleCache#{query}_keyword"
