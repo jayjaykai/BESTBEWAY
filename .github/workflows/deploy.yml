@@ -51,6 +51,9 @@ jobs:
 
           docker-compose down
 
+          # 清理 Docker 構建緩存
+          docker builder prune -f
+          
           # 移除舊的 bestbeway-web image
           docker images -q bestbeway-web | xargs --no-run-if-empty docker rmi
 
